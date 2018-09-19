@@ -2,6 +2,7 @@ from unity_metropolis import *
 from auxilary import *
 import sys
 import scipy.sparse as sp
+import pandas as pd 
 
 """
 unity_gibbs.py
@@ -679,14 +680,12 @@ def gibbs_ivar(z, h, N, M, V_half, p_init=None, c_init=None, gamma_init=None, it
     return p_est, p_var, gamma_est, c_est, est_density, p_list, maps
 
 
-def gibbs_ivar_gw(z_list, h_list, N, ld_list, p_init=None, c_init_list=None, gamma_init_list=None, its=5000):
+def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000):
 
     # hold samples of p
     p_list = []
-    gamma_list = []
-    gamma_t_list = []
-    c_list = []
-    c_t_list = []
+    gamma_t_list = [] 
+    c_t_list = [] 
 
     # initialize params
     if p_init is None:
@@ -696,11 +695,13 @@ def gibbs_ivar_gw(z_list, h_list, N, ld_list, p_init=None, c_init_list=None, gam
 
     B = len(z_list) # number of blocks
 
+    # loop through all blocks 
     for b in range(0, B):
-        H_b = h_list[b]
+
+        # read in betas from gwas file 
+        z_b = z_list[b]
         M_b = len(z_list[b])
-        #sd = math.sqrt(H_b / float(M_b))
-        sd = math.sqrt(H_b)
+        sd = math.sqrt(H_snp)
 
         # save old value to see see if accepted/rejected
         p_old = p_t
@@ -719,29 +720,25 @@ def gibbs_ivar_gw(z_list, h_list, N, ld_list, p_init=None, c_init_list=None, gam
         gamma_t_list.append(gamma_t_b)
         c_t_list.append(c_t_b)
 
-        # build list of blocks for running avg
-        gamma_list.append(gamma_t_b)
-        c_list.append(c_t_b)
-
     # end loop initializing first iteration
-
 
     for i in range(0, its):
         for b in range(0, B):
 
             # get params for block b
-            M_b = len(z_list[b])
-            H_b = h_list[b]
-            V_half_b = ld_list[b]
             z_b = z_list[b]
+            M_b = len(z_list[b])
+            sd = math.sqrt(H_snp)
+
+            # read in ld directly from file 
+            V_half_b = np.loadtxt(ld_half_flist[b])
 
             # get values from prev iteration
             gamma_t_b = gamma_t_list[b]
             c_t_b = c_t_list[b]
 
-            #sigma_g_b = H_b / float(M_b)
-            sigma_g_b = H_b
-            sigma_e_b = (1 - H_b) / N
+            sigma_g_b = H_gw
+            sigma_e_b = (1 - H_gw) / N
 
             # sample causal vector and effects for  block b
             c_t_b, gamma_t_b = draw_c_gamma(c_t_b, gamma_t_b, p_t, sigma_g_b, sigma_e_b, V_half_b, z_b)
@@ -749,13 +746,6 @@ def gibbs_ivar_gw(z_list, h_list, N, ld_list, p_init=None, c_init_list=None, gam
             # replace in larger lists
             gamma_t_list[b] = gamma_t_b
             c_t_list[b] = c_t_b
-
-            # add to running average
-            gamma_list[b] = np.add(gamma_list[b], gamma_t_b)
-            c_list[b] = np.add(c_list[b], c_t_b)
-
-            if i <= 10 or i % 50 == 0:
-                print "Iteration %d: sampled c: %.4f" % (i, np.sum(c_t_b)/float(M_b))
 
         # end loop over blocks
         p_t = draw_p_ivar_gw(c_t_list)

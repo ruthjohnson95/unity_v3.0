@@ -1,6 +1,9 @@
-SIM NAME: pipeline_test 
-HERITABILITY: 0.10
-P SIM: 0.05
-SAMPLE SIZE: 100000
-BLOCKS: 2
+SIM NAME: identity_test 
+HERITABILITY: 0.20
+P SIM: 0.01
+SAMPLE SIZE: 500000
+BLOCKS: 10
 SEED: 2018
+SIM DIR: /Users/ruthiejohnson/Development/unity_v3.0/simulations/identity_test
+LD DIR: /Users/ruthiejohnson/Development/unity_v3.0/misc/identity_ld
+LD HALF DIR: /Users/ruthiejohnson/Development/unity_v3.0/misc/identity_ld_half

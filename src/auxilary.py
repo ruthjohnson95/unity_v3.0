@@ -341,7 +341,6 @@ def truncate_matrix_neg_half(V):
     # reorder eigenvectors from inc to dec
     idx = d.argsort()[::-1]
     Q[:] = Q[:, idx]
-    #d[:] = d.argsort()[::-1]
 
     # truncate small eigenvalues for stability
     d_trun = truncate_eigenvalues(d)

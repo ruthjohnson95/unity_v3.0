@@ -10,26 +10,20 @@ N=$(cat $sim_yaml | grep "SAMPLE SIZE" | cut -d':' -f2 | tr -d " \t\n\r" )
 BLOCKS=$(cat $sim_yaml | grep "BLOCKS" | cut -d':' -f2 | tr -d " \t\n\r" )
 SEED=$(cat $sim_yaml | grep "SEED" | cut -d':' -f2 | tr -d " \t\n\r" )
 SIM_DIR=$(cat $sim_yaml | grep "SIM DIR" | cut -d':' -f2 | tr -d " \t\n\r" )
-LD_DIR=$(cat $sim_yaml | grep "LD DIR" | cut -d':' -f2 | tr -d " \t\n\r" )
 LD_HALF_DIR=$(cat $sim_yaml | grep "LD HALF DIR" | cut -d':' -f2 | tr -d " \t\n\r" )
+
+echo $SIM_NAME
+echo $H_SIM
+echo $P_SIM
+echo $N
+echo $BLOCKS
+echo $SEED
+echo $SIM_DIR 
+echo $LD_HALF_DIR
 
 # make simulation dir 
 OUTDIR=$SIM_DIR'/'$SIM_NAME 
 mkdir -p $OUTDIR
 
 # generate sample gwas 
-python scripts/simulate.py --sim_name $SIM_NAME --h_sim $H_SIM --p_sim $P_SIM --N $N --blocks $BLOCKS --seed $SEED --ld_dir $LD_DIR --outdir $OUTDIR
-
-# transform betas 
-python scripts/transform_betas.py --gwas_dir $OUTDIR --ld_dir $LD_DIR
-
-# make directory for half ld 
-mkdir -p $LD_HALF_DIR
-
-# take 1/2 power of ld 
-python scripts/half_ld.py --ld_dir $LD_DIR --ld_half_dir $LD_HALF_DIR
-
-# run inference 
-python src/unity_v3.py --seed $SEED --H $H_SIM --N $N --id $SIM_NAME --ld_half_dir $LD_HALF_DIR --gwas_dir $OUTDIR --outdir $OUTDIR
-
-
+python simulate.py --sim_name $SIM_NAME --h_sim $H_SIM --p_sim $P_SIM --N $N --blocks $BLOCKS --seed $SEED --ld_half_dir $LD_HALF_DIR --outdir $OUTDIR
