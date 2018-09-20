@@ -5,7 +5,7 @@
 #$ -o unity_v3_sims.log
 #$ -t 1-100:1
 
-#SGE_TASK_ID=1
+#SGE_TASK_ID=37
 
 source /u/local/Modules/default/init/modules.sh
 module load python/2.7
@@ -36,16 +36,16 @@ do
 	mkdir -p $OUTDIR
 
         # generate sample gwas 
-	python scripts/simulate.py --sim_name $SIM_NAME --h_sim $H_SIM --p_sim $P_SIM --N $N --blocks $BLOCKS --seed $SEED --ld_dir $LD_DIR --outdir $OUTDIR
+#	python scripts/simulate.py --sim_name $SIM_NAME --h_sim $H_SIM --p_sim $P_SIM --N $N --blocks $BLOCKS --seed $SEED --ld_dir $LD_DIR --outdir $OUTDIR
 
         # transform betas 
-	python scripts/transform_betas.py --gwas_dir $OUTDIR --ld_dir $LD_DIR
+#	python scripts/transform_betas.py --gwas_dir $OUTDIR --ld_dir $LD_DIR
 
         # make directory for half ld 
 	mkdir -p $LD_HALF_DIR
 
         # take 1/2 power of ld 
-	python scripts/half_ld.py --ld_dir $LD_DIR --ld_half_dir $LD_HALF_DIR --blocks $BLOCKS
+#	python scripts/half_ld.py --ld_dir $LD_DIR --ld_half_dir $LD_HALF_DIR --blocks $BLOCKS
 
         # run inference 
 	python src/unity_v3.py --seed $SEED --H $H_SIM --N $N --id $SIM_NAME --ld_half_dir $LD_HALF_DIR --gwas_dir $OUTDIR --outdir $OUTDIR --its $ITS
