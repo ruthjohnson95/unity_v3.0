@@ -56,28 +56,37 @@ def main():
     parser = OptionParser() 
     parser.add_option("--ld_half_dir", dest="ld_half_dir")
     parser.add_option("--ld_dir", dest="ld_dir")
+    parser.add_option("--blocks", dest="blocks")
 
     (options, args) = parser.parse_args() 
     ld_half_dir = options.ld_half_dir 
     ld_dir = options.ld_dir 
+    B = int(options.blocks) 
 
+    ld_file_counter = 0 
     for ld_file in os.listdir(ld_dir):
         
-        ld_file_b = os.path.join(ld_dir, ld_file)
+        if ld_file_counter < B:
+            ld_file_b = os.path.join(ld_dir, ld_file)
 
-        ld_b = np.loadtxt(ld_file_b)
+            ld_b = np.loadtxt(ld_file_b)
 
-        logging.info("Taking 1/2 power of ld matrix: %s" % os.path.basename(ld_file_b))
+            logging.info("Taking 1/2 power of ld matrix: %s" % os.path.basename(ld_file_b))
 
-        ld_half_b = truncate_matrix_half(ld_b) 
+            ld_half_b = truncate_matrix_half(ld_b) 
 
-        ld_file_base = os.path.basename(ld_file_b)
-        ld_string = ld_file_base.split('.') 
-        ld_prefix = ld_string[0] + '.'+ ld_string[1] + '.' + ld_string[2] + '.half_ld'
-        ld_half_fname = os.path.join(ld_half_dir, ld_prefix)
-        np.savetxt(ld_half_fname ,ld_half_b)
+            ld_file_base = os.path.basename(ld_file_b)
+            ld_string = ld_file_base.split('.') 
+            ld_prefix = ld_string[0] + '.'+ ld_string[1] + '.' + ld_string[2] + '.half_ld'
+            ld_half_fname = os.path.join(ld_half_dir, ld_prefix)
+            np.savetxt(ld_half_fname ,ld_half_b)
 
-        logging.info("Saving 1/2 power ld matrix to: %s" % os.path.basename(ld_half_fname))
+            logging.info("Saving 1/2 power ld matrix to: %s" % os.path.basename(ld_half_fname))
+            
+            ld_file_counter += 1 
+
+        else:
+            break 
 
     logging.info("FINISHED transforming ld matrices to 1/2 power")
     logging.info("Transformed ld matricies can be found in: %s" % ld_half_dir)

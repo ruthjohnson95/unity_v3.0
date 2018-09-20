@@ -79,6 +79,8 @@ def main():
         gwas_file_b = os.path.join(gwas_dir, gwas_file)
         ld_file_b = os.path.join(ld_dir, ld_file)
 
+        logging.info("gwas file: %s" % gwas_file_b) 
+
         gwas_b = pd.read_table(gwas_file_b)
         z_b = np.asarray(gwas_b['BETA_STD']) 
         ld_b = np.loadtxt(ld_file_b)

@@ -50,7 +50,7 @@ def initial_estimates(z, H_gw, M_gw, N):
 
         result = minimize(neg_log_p_pdf_noLD, x0, tol=1e-8, method="L-BFGS-B",
                            args=(H_gw, z, M_gw, N), jac=False,
-                           bounds=[(10e-5, 1.0)])
+                           bounds=[(0.00001, 1.0)])
 
         p_est = result.x
 
@@ -101,7 +101,7 @@ def main():
     parser.add_option("--H", "--H", dest="H")
     parser.add_option("--N", "--N", dest="N", default=1000)
     parser.add_option("--id", "--id", dest="id", default="unique_id")
-    parser.add_option("--its", "--ITS", dest="its", default=500)
+    parser.add_option("--its", "--ITS", dest="its", default=250)
     parser.add_option("--ld_half_dir", dest="ld_half_dir")
     parser.add_option("--gwas_dir", dest="gwas_dir")
     parser.add_option("--ld_half_ext", dest="ld_half_ext", default="half_ld")
@@ -139,6 +139,7 @@ def main():
 
     # get filenames for gwas and ld
     gwas_flist = [f for f in listdir(gwas_dir) if f.endswith('.' + gwas_ext)] 
+    print gwas_flist
     ld_half_flist = [f for f in listdir(ld_half_dir) if f.endswith('.'+ld_half_ext)]
 
     # append full paths 
@@ -163,9 +164,10 @@ def main():
     H_gw = H 
     z_arr = np.array(z_list) 
     z = z_arr.flatten()
-    p_init = initial_estimates(z, H_gw, M_gw, N)
+    #p_init = initial_estimates(z, H_gw, M_gw, N)
+    p_init = None
 
-    logging.info("Initializing MCMC with starting value: p=%.4g" % p_init)
+#    logging.info("Initializing MCMC with starting value: p=%.4g" % p_init)
     p_est, p_var, p_list = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, its=ITS)
 
     # log results to log file 
