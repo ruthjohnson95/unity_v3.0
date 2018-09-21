@@ -110,8 +110,6 @@ def main():
 
     (options, args) = parser.parse_args()
 
-    print options 
-
     # set seed
     seed = int(options.seed)
     np.random.seed(seed)

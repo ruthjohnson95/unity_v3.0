@@ -8,6 +8,7 @@ import sys
 import os 
 import logging 
 import pandas as pd
+import glob 
 
 # set up global logging 
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
@@ -68,13 +69,20 @@ def main():
     parser = OptionParser() 
     parser.add_option("--gwas_dir", dest="gwas_dir")
     parser.add_option("--ld_dir", dest="ld_dir")
-
+    parser.add_option("--gwas_ext", dest="gwas_ext", default="gwas")
+    parser.add_option("--ld_ext", dest="ld_ext", default="ld")
     (options, args) = parser.parse_args() 
+
     gwas_dir = options.gwas_dir 
     ld_dir = options.ld_dir 
+    gwas_ext = options.gwas_ext 
+    ld_ext = options.ld_ext 
 
+    # remove files that aren't gwas or ld 
+    gwas_file_list = [ x for x in os.listdir(gwas_dir) if gwas_ext in x ]
+    ld_file_list = [ x for x in os.listdir(ld_dir) if ld_ext in x]
 
-    for gwas_file, ld_file in zip(os.listdir(gwas_dir), os.listdir(ld_dir)):
+    for gwas_file, ld_file in zip(gwas_file_list, ld_file_list):
 
         gwas_file_b = os.path.join(gwas_dir, gwas_file)
         ld_file_b = os.path.join(ld_dir, ld_file)
