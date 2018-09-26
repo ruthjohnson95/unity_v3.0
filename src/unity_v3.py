@@ -80,7 +80,7 @@ def print_header(id, H, N, ITS, seed, gwas_dir, ld_half_dir, outdir, f):
     print_func("- - - - - - - - - - UNITY v3.0 - - - - - - - - -", f) 
 
     print_func("Run id: %s" % id, f) 
-    print_func("Heritability: %.2f" % H , f) 
+    print_func("Heritability: %.4f" % H , f) 
     print_func("Sample size: %d" % N, f) 
     print_func("Iterations: %d" % ITS, f) 
     print_func("Seed: %d" % seed, f) 
@@ -137,7 +137,6 @@ def main():
 
     # get filenames for gwas and ld
     gwas_flist = [f for f in listdir(gwas_dir) if f.endswith('.' + gwas_ext)] 
-    print gwas_flist
     ld_half_flist = [f for f in listdir(ld_half_dir) if f.endswith('.'+ld_half_ext)]
 
     # append full paths 

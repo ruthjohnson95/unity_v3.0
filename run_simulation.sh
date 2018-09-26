@@ -1,11 +1,11 @@
 #!/usr/bin/env sh 
 #$ -cwd
 #$ -j y
-#$ -l h_data=10G,h_rt=12:00:00,highp
-#$ -o unity_v3_sims_p10.log
+#$ -l h_data=10G,h_rt=4:00:00,highp
+#$ -o unity_v3_sims.log
 #$ -t 1-100:1
 
-SGE_TASK_ID=1
+#SGE_TASK_ID=1
 
 source /u/local/Modules/default/init/modules.sh
 module load python/2.7
@@ -16,7 +16,7 @@ do
     if [[ $COUNTER -eq $SGE_TASK_ID ]]
     then
 
-	sim_yaml=/u/home/r/ruthjohn/ruthjohn/unity_v3.0/sim.yaml
+	sim_yaml=$1
 
         # parse simulation parameters from input file 
 	SIM_NAME=$(cat $sim_yaml | grep "SIM NAME" | cut -d':' -f2 | tr -d " \t\n\r" )
@@ -45,7 +45,7 @@ do
 	mkdir -p $LD_HALF_DIR
 
         # take 1/2 power of ld 
-	python scripts/half_ld.py --ld_dir $LD_DIR --ld_half_dir $LD_HALF_DIR --blocks $BLOCKS
+#	python scripts/half_ld.py --ld_dir $LD_DIR --ld_half_dir $LD_HALF_DIR --blocks $BLOCKS
 
         # run inference 
 	python src/unity_v3.py --seed $SEED --H $H_SIM --N $N --id $SIM_NAME --ld_half_dir $LD_HALF_DIR --gwas_dir $OUTDIR --outdir $OUTDIR --its $ITS

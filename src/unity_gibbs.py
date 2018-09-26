@@ -737,7 +737,7 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
             gamma_t_b = gamma_t_list[b]
             c_t_b = c_t_list[b]
 
-            sigma_g_b = H_gw
+            sigma_g_b = H_snp
             sigma_e_b = (1 - H_gw) / N
 
             # sample causal vector and effects for  block b
@@ -754,7 +754,7 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
         p_list.append(p_t)
 
         # print debugging-info
-        if i <= 10 or i % 50 == 0:
+        if i <= 10 or i % 1 == 0:
             print("Iteration %d: sampled p: %.4f") % (i, p_t)
 
     # end loop iterations

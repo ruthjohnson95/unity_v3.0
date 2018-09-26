@@ -114,6 +114,9 @@ def simulate_ivar_gw(p_sim, h_sim, N, B, ld_dir, outdir, M=None):
 		else:
 			break 
 
+        true_p = total_causals_gw/float(M_gw)
+        logging.info("True prop causals: %.4f" % true_p)
+
 	return
 
 
@@ -122,7 +125,7 @@ def print_header(sim_name, p_sim, h_sim, N, blocks, seed, outdir, ld_half_dir):
 
 	print "Simulation Name: %s" % sim_name
 	print "Prop causals: %.4f" % p_sim 
-	print "Heritability: %.2f" % h_sim 
+	print "Heritability: %.4f" % h_sim 
 	print "Sample size: %d" % N 
 	print "Num blocks: %d" % blocks
 	print "Seed: %d" % seed
@@ -152,6 +155,7 @@ def main():
 	parser.add_option("--M", dest="M")
 
 	(options, args) = parser.parse_args() 
+
 	sim_name = options.sim_name 
 	h_sim = float(options.h_sim)
 	p_sim = float(options.p_sim)

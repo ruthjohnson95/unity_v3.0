@@ -1,0 +1,10 @@
+SIM NAME: identity_H001_p01
+HERITABILITY: 0.001
+P SIM: 0.01
+SAMPLE SIZE: 500000
+BLOCKS: 1
+SEED: 2018
+SIM DIR: /u/home/r/ruthjohn/ruthjohn/unity_v3.0/simulations
+LD DIR: /u/home/r/ruthjohn/ruthjohn/unity_v3.0/misc/identity_ld
+LD HALF DIR: /u/home/r/ruthjohn/ruthjohn/unity_v3.0/misc/identity_ld_half
+ITS: 1000
