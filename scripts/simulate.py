@@ -1,37 +1,28 @@
 #!/usr/bin/env python
 
-from optparse import OptionParser 
+from optparse import OptionParser
 import numpy as np
 import scipy.stats as st
-import math 
-import sys 
-import os 
-import logging 
-import gzip 
+import math
+import sys
+import os
+import logging
 import pandas as pd
+import re
 
-# setup global logging 
+# setup global logging
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 
-# global priors
-beta_lam = 0.20 # prior for proportion p, p ~ Beta(beta_lam, beta_lam)
 
-# global constants used to check for under/overflow
-LOG_MIN = 1.7976931348623157e-308
-LOG_MAX = 1.7976931348623157e+308
-EXP_MAX = math.log(sys.float_info.max)
-MAX = sys.float_info.max
-MIN = sys.float_info.min
-
-# simulates gwas effect sizes assuming an infintiesimal variance (h/M)
-def simulate_ivar(p_sim, sigma_g_m, N, M, V):
+# simulates gwas effect sizes assuming an infintiesimal variance (h/M) with LD
+def simulate_ivar_LD(p_sim, sigma_g_m, N, M, V):
     c = st.bernoulli.rvs(p=p_sim, size=M)
     true_p = (np.sum(c)/float(M))
 
     sd = math.sqrt(sigma_g_m)
     gamma = st.norm.rvs(loc=0, scale=sd, size=M)
     beta = np.multiply(gamma, c)
-    h_sim = sigma_g_m * M 
+    h_sim = sigma_g_m * M
     sigma_e = (1-h_sim)/float(N)
 
     mu = np.matmul(V, beta)
@@ -42,147 +33,158 @@ def simulate_ivar(p_sim, sigma_g_m, N, M, V):
     return z, c, gamma, true_p
 
 
+# simulate gwas effects with infinitesimal variance (h/M) WITHOUT LD
+def simulate_ivar_gw_noLD(p_sim, h_snp, h_gwas, N, M, sim_name, outdir):
+    sigma_g_m = h_snp
+    h_sim = h_gwas 
+
+    c = st.bernoulli.rvs(p=p_sim, size=M)
+    true_p = (np.sum(c)/float(M))
+
+    sd = math.sqrt(sigma_g_m)
+    gamma = st.norm.rvs(loc=0, scale=sd, size=M)
+    beta = np.multiply(gamma, c)
+    h_sim = sigma_g_m * M
+    sigma_e = (1-h_sim)/float(N)
+
+    mu = beta
+    env_sd = np.sqrt(sigma_e)
+
+    z = st.norm.rvs(loc=mu, scale=env_sd, size=M)
+
+    logging.info("True prop causals: %.4f" % true_p)
+
+    outfile = sim_name+'.gwas'
+    full_outfile = os.path.join(outdir, outfile)
+
+    z_df = pd.DataFrame(data=z, columns=['BETA_STD'])
+    z_df.to_csv(full_outfile, sep=' ', index=False)
+    logging.info("Saving simulated gwas to: %s" % outfile)
+
+    return
+
+
 # simulates GWAS across entire genome
-def simulate_ivar_gw(p_sim, h_sim, N, B, ld_dir, outdir, M=None):
+def simulate_ivar_gw_LD(p_sim, h_snp, h_sim, N, ld_list_file, rsid_list_file, ld_dir, bim_dir, outdir, M=None):
 
-	total_causals_gw = 0 
-	M_gw = 0 
-	ld_files = [] 
+    total_causals_gw = 0
+    M_gw = 0
 
-	ld_file_counter = 0
+    with open(ld_list_file, 'r') as ld_list:
+        with open(rsid_list_file, 'r') as rsid_list:
+            for ld_file, rsid_file in zip(ld_list, rsid_list):
+                ld_file = os.path.basename(ld_file)
+                ld_file_b = os.path.join(ld_dir, ld_file)
+                ld_file_b= ld_file_b.rstrip()
 
-	# count how many SNPs if not provided 
-	if M is None:
-		for ld_file in os.listdir(ld_dir):
-			if ld_file_counter < B:
+                sigma_g_m = h_snp
+                ld_b = np.loadtxt(ld_file_b)
 
-	    		# process ld files 
-				ld_file_b = os.path.join(ld_dir, ld_file)
+                logging.info("Simulating effect sizes using ld matrix: %s" % os.path.basename(ld_file_b))
 
+                M_b = ld_b.shape[0]
+                M_gw += M_b
+                z_b, c_b, gamma_b, true_p = simulate_ivar_LD(p_sim, sigma_g_m, N, M_b, ld_b)
 
-				ld_b = np.loadtxt(ld_file_b)
-				M_b = ld_b.shape[0]
+    			# keep running total of total causals
+                total_causals_gw += np.sum(c_b)
 
-				# add to running total of SNPs 
-				M_gw += M_b 	
+                # open bim file containing BP/CHR info
+                rsid_file = os.path.basename(rsid_file)
+                rsid_file = rsid_file.rstrip() 
+                bim_prefix = rsid_file.split('.')
+#                CHR = re.sub("\D", "", chr_prefix[0])
+                full_bim_file =  os.path.join(bim_dir, bim_prefix[0]+'.'+bim_prefix[1]+'.'+bim_prefix[2]+'.bim') 
 
-				# add ld filename to running list 
-				ld_files.append(ld_file_b)		
+                logging.info("Using bim file for SNP/BP info: %s" % full_bim_file) 
 
-				ld_file_counter += 1 
+                df = pd.read_csv(full_bim_file, header=None, sep='\t')
 
-			else:
-			 	# processed B ld files--exiting loop over files 
-				break
-	else: # user provided M 
-		M_gw = M 
+                df.columns = ['CHR', 'SNP', 'POS', 'BP', 'Allele1', 'Allele2']
+                df['BETA_STD'] = z_b
 
+                locus_fname = bim_prefix[0]+'.'+bim_prefix[1]+'.'+bim_prefix[2]+'.gwas'
 
-	# draw betas with LD 
-	ld_file_counter = 0 
-	for ld_file in os.listdir(ld_dir):
+                locus_full_fname = os.path.join(outdir, locus_fname)
 
-		if ld_file_counter < B:
-			ld_file_b = os.path.join(ld_dir, ld_file)
+                df.to_csv(locus_full_fname, sep=' ', index=False)
 
-			sigma_g_m = h_sim/float(M_gw)
-			ld_b = np.loadtxt(ld_file_b)
+                logging.info("Saving locus to: %s" % locus_fname)
 
-			logging.info("Simulating effect sizes using ld matrix: %s" % os.path.basename(ld_file_b))
-			
-			M_b = ld_b.shape[0]
-			z_b, c_b, gamma_b, true_p = simulate_ivar(p_sim, sigma_g_m, N, M_b, ld_b)
+    true_p = total_causals_gw/float(M_gw)
+    logging.info("True prop causals: %.4f" % true_p)
 
-			# keep running total of total causals 
-			total_causals_gw += np.sum(c_b)
-
-			# save betas to file 
-			locus_file_base = os.path.basename(ld_file_b)
-			locus_prefix = locus_file_base.split('.')
-			locus_fname = locus_prefix[0]+'.'+locus_prefix[1]+'.'+locus_prefix[2]+'.gwas'
-
-			locus_full_fname = os.path.join(outdir, locus_fname)
-
-			z_df = pd.DataFrame(data=z_b, columns=['BETA_STD'])		
-
-			z_df.to_csv(locus_full_fname, sep=' ', index=False)
-
-			logging.info("Saving locus to: %s" % locus_fname)
-
-			ld_file_counter += 1 
-
-		else:
-			break 
-
-        true_p = total_causals_gw/float(M_gw)
-        logging.info("True prop causals: %.4f" % true_p)
-
-	return
+    return
 
 
-def print_header(sim_name, p_sim, h_sim, N, blocks, seed, outdir, ld_half_dir):
-	print "- - - - - - - - - - UNITY v3.0 simulation - - - - - - - - -"
+# header statement
+def print_header(sim_name, p_sim, h_sim, N, outdir, rsid_list, ld_list, bim_dir, ld_dir, M):
+    logging.info("Simulation name: %s" % sim_name)
+    logging.info("Simulating with params -- p: %.4f, H2: %.4f, N: %d" % (p_sim, h_sim, N))
 
-	print "Simulation Name: %s" % sim_name
-	print "Prop causals: %.4f" % p_sim 
-	print "Heritability: %.4f" % h_sim 
-	print "Sample size: %d" % N 
-	print "Num blocks: %d" % blocks
-	print "Seed: %d" % seed
-	print "Outputing simulated gwas to directory: %s" % outdir 
+    if None in [rsid_list, ld_list, bim_dir, ld_dir]: # missing LD param
+        logging.info("Did not find information for LD...simulating without LD")
+        logging.info("Going to simulate %d SNPs" % M)
 
-	if ld_half_dir is None:
-		print "LD dir: None...simulating without LD"
-	else:
-		print "LD dir: %s" % ld_half_dir
 
-	print "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+    else:
+        logging.info("Simulating with LD found in dir: %s" % ld_dir)
 
-	return 
+    logging.info("Outputing simulated gwas to: %s" % outdir)
+
+    return
 
 
 def main():
-	parser = OptionParser() 
-	parser.add_option("--sim_name", dest="sim_name", default="test_pipeline")
-	parser.add_option("--h_sim", dest="h_sim", default=0.20)
-	parser.add_option("--p_sim", dest="p_sim", default=0.05)
-	parser.add_option("--N", dest="N", default=100000)
-	parser.add_option("--blocks", dest="blocks", default=1)
-	parser.add_option("--seed", dest="seed", default=100)
-	parser.add_option("--outdir", dest="outdir")
-	parser.add_option("--ld_dir", dest="ld_dir")
-	parser.add_option("--ld_half_dir", dest="ld_half_dir")
-	parser.add_option("--M", dest="M")
+    parser = OptionParser()
+    parser.add_option("--sim_name", dest="sim_name", default="test_pipeline")
+    parser.add_option("--h_gwas", dest="h_gwas", default=0.20)
+    parser.add_option("--h_snp", dest="h_snp")
+    parser.add_option("--p_sim", dest="p_sim", default=0.05)
+    parser.add_option("--N", dest="N", default=100000)
+    parser.add_option("--rsid_list", dest="rsid_list")
+    parser.add_option("--ld_list", dest="ld_list")
+    parser.add_option("--outdir", dest="outdir")
+    parser.add_option("--bim_dir", dest="bim_dir")
+    parser.add_option("--ld_dir", dest="ld_dir")
+    parser.add_option("--seed", dest="seed", default=100)
+    parser.add_option("--M", dest="M")
 
-	(options, args) = parser.parse_args() 
+    (options, args) = parser.parse_args()
+    print options 
 
-	sim_name = options.sim_name 
-	h_sim = float(options.h_sim)
-	p_sim = float(options.p_sim)
-	N = int(options.N)
-	B = int(options.blocks)
-	seed = int(options.seed)
-	outdir = options.outdir
-	ld_dir = options.ld_dir 
-	ld_half_dir = options.ld_half_dir
-	M = options.M 
-	if M is not None:
-		M = int(M)
+    sim_name = options.sim_name
+    h_gwas = float(options.h_gwas)
+    h_snp = float(options.h_snp)
+    p_sim = float(options.p_sim)
+    N = int(options.N)
+    seed = int(options.seed)
+    outdir = options.outdir
+    ld_list = options.ld_list
+    rsid_list = options.rsid_list
+    bim_dir = options.bim_dir
+    ld_dir = options.ld_dir
+    M = options.M
+    if M != 'NA':
+        M = int(M)
 
-	# set the seed 
-	np.random.seed(seed)
+    # set the seed
+    np.random.seed(seed)
 
-	print_header(sim_name, p_sim, h_sim, N, B, seed, outdir, ld_dir)
+    # print the header for user
+    print_header(sim_name, p_sim, h_snp, N, outdir, rsid_list, ld_list, bim_dir, ld_dir, M)
 
-	simulate_ivar_gw(p_sim, h_sim, N, B, ld_dir, outdir, M=M)
+    if 'NA' in [rsid_list, ld_list, bim_dir, ld_dir]:
+        # no LD
+        simulate_ivar_gw_noLD(p_sim, h_snp, h_gwas, N, M, sim_name, outdir)
+    else:
+        # LD
+        print(ld_dir)
+        simulate_ivar_gw_LD(p_sim, h_snp, h_gwas, N, ld_list, rsid_list, ld_dir, bim_dir, outdir)
 
-	logging.info("FINISHED simulating")
-	logging.info("Simulations can be found at: %s" % outdir)
+    logging.info("FINISHED simulating")
+    logging.info("Simulations can be found at: %s" % outdir)
+
 
 if __name__== "__main__":
   main()
-
-
-
-
-

@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+0;95;0c#!/usr/bin/env sh
 
 source /u/local/Modules/default/init/modules.sh
 module load python/2.7
@@ -24,6 +24,7 @@ M=$(cat $sim_yaml | grep "NUM SNPS" | cut -d':' -f2 | tr -d " \t\n\r" )
 SEED=$(cat $sim_yaml | grep "SEED" | cut -d':' -f2 | tr -d " \t\n\r" )
 PLINK=$(cat $sim_yaml | grep "PLINK" | cut -d':' -f2 | tr -d " \t\n\r" )
 REF_PATH=$(cat $sim_yaml | grep "REF BIM" | cut -d':' -f2 | tr -d " \t\n\r")
+N_SNP=$(cat $sim_yaml | grep "H SNP" | cut -d':' -f2 | tr -d " \t\n\r")
 
 SIMDIR=$OUT_DIR'/'$SIM_NAME
 
@@ -32,10 +33,14 @@ LD_HALF_DIR=$SIMDIR/$SIM_NAME'_half_dir'
 mkdir -p $LD_HALF_DIR
 
 # transform betas 
+
 python scripts/transform_betas.py --gwas_dir $SIMDIR --ld_dir $LD_DIR
 
 # take 1/2 power of ld 
-BLOCKS=1 
+BLOCKS=$(wc -l $RSID_LIST | cut -d' ' -f1) # get total blocks from snp list 
 python scripts/half_ld.py --ld_dir $LD_DIR --ld_half_dir $LD_HALF_DIR --blocks $BLOCKS
 
-python src/unity_v3.py --seed $SEED --H $H_SIM --N $N --id $SIM_NAME --ld_half_dir $LD_HALF_DIR --gwas_dir $SIMDIR --outdir $SIMDIR --its $ITS
+# loop through all blocks 
+LOCUS_NAME=### 
+H_SNP=
+python src/unity_v3_block.py --seed $SEED --H_snp $H_SNP --N $N --id $LOCUS_NAME --ld_half_dir $LD_HALF_DIR --gwas_dir $SIMDIR --outdir $SIMDIR --its $ITS

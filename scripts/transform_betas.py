@@ -71,44 +71,84 @@ def main():
     parser.add_option("--ld_dir", dest="ld_dir")
     parser.add_option("--gwas_ext", dest="gwas_ext", default="gwas")
     parser.add_option("--ld_ext", dest="ld_ext", default="ld")
+    parser.add_option("--gwas_file", dest="gwas_file")
+    parser.add_option("--ld_file", dest="ld_file")
+
     (options, args) = parser.parse_args() 
+    print options 
 
     gwas_dir = options.gwas_dir 
     ld_dir = options.ld_dir 
     gwas_ext = options.gwas_ext 
     ld_ext = options.ld_ext 
+    ld_file = options.ld_file
+    gwas_file = options.gwas_file 
 
-    # remove files that aren't gwas or ld 
-    gwas_file_list = [ x for x in os.listdir(gwas_dir) if gwas_ext in x ]
-    ld_file_list = [ x for x in os.listdir(ld_dir) if ld_ext in x]
+    if gwas_dir is not None and ld_dir is not None:
 
-    for gwas_file, ld_file in zip(gwas_file_list, ld_file_list):
+        # remove files that aren't gwas or ld 
+        gwas_file_list = [ x for x in os.listdir(gwas_dir) if gwas_ext in x ]
+        ld_file_list = [ x for x in os.listdir(ld_dir) if ld_ext in x]
 
-        gwas_file_b = os.path.join(gwas_dir, gwas_file)
-        ld_file_b = os.path.join(ld_dir, ld_file)
+        for gwas_file, ld_file in zip(gwas_file_list, ld_file_list):
+
+            gwas_file_b = os.path.join(gwas_dir, gwas_file)
+            ld_file_b = os.path.join(ld_dir, ld_file)
+            
+            logging.info("gwas file: %s" % gwas_file_b) 
+            
+            gwas_b = pd.read_table(gwas_file_b, sep=' ')
+            print list(gwas_b)
+            z_b = np.asarray(gwas_b['BETA_STD']) 
+            ld_b = np.loadtxt(ld_file_b)
+            
+            logging.info("Converting betas from file: %s" % os.path.basename(gwas_file_b)) 
+            logging.info("Using ld file: %s" % os.path.basename(ld_file_b)) 
+            
+            z_b_twiddle = convert_betas(z_b, ld_b)
+
+            # add converted betas to df 
+            gwas_b['BETA_STD_I'] = z_b_twiddle 
+            
+            # output file 
+            gwas_b.to_csv(gwas_file_b, sep=' ', index=False)
+            
+            logging.info("Saving locus to: %s" % gwas_file_b)
+            
+
+        logging.info("FINISHED converting betas to transformed betas")
+        logging.info("Transformed betas can be found in: %s" % gwas_dir)
+
+    elif gwas_file is not None and ld_file is not None:
+        gwas_file_b = gwas_file 
+        ld_file_b = ld_file 
 
         logging.info("gwas file: %s" % gwas_file_b) 
 
-        gwas_b = pd.read_table(gwas_file_b)
-        z_b = np.asarray(gwas_b['BETA_STD']) 
+        gwas_b = pd.read_table(gwas_file_b, sep=' ')
+        z_b = np.asarray(gwas_b['BETA_STD'])
         ld_b = np.loadtxt(ld_file_b)
 
-        logging.info("Converting betas from file: %s" % os.path.basename(gwas_file_b)) 
-        logging.info("Using ld file: %s" % os.path.basename(ld_file_b)) 
+        logging.info("Converting betas from file: %s" % os.path.basename(gwas_file_b))
+        logging.info("Using ld file: %s" % os.path.basename(ld_file_b))
 
         z_b_twiddle = convert_betas(z_b, ld_b)
 
-        # add converted betas to df 
-        gwas_b['BETA_STD_I'] = z_b_twiddle 
+        # add converted betas to df
+        gwas_b['BETA_STD_I'] = z_b_twiddle
 
-        # output file 
+        # output file
         gwas_b.to_csv(gwas_file_b, sep=' ', index=False)
 
         logging.info("Saving locus to: %s" % gwas_file_b)
 
+        logging.info("FINISHED converting betas to transformed betas")
 
-    logging.info("FINISHED converting betas to transformed betas")
-    logging.info("Transformed betas can be found in: %s" % gwas_dir)
+    else: 
+
+        logging.inf("ERROR: user did not provide ld/gwas dir or ld/gwas filenames...exiting")
+        exit(1)
+    
 
 
 
