@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# full path to snplist 
+RSID_FILE=$
+NAME_PREFIX="${RSID_FILE%.*}"
+
+# full path to plink executable
+PLINK=$
+
+# outdir
+OUTDIR=$
+
+# get chromosome number 
+CHR=$(echo $RSID_FILE | cut -d'.' -f1 |  sed 's/[^0-9]*//g')
+
+# 1000G ref panel 
+REF_PANEL=$
+BFILE=$REF_PANEL'.'$CHR
+
+# set minro allele frequency 
+MAF=0.05
+
+# compute LD 
+$PLINK --allow-no-sex --bfile $BFILE --maf $MAF --chr $CHR --extract $RSID_FILE --r --matrix --out ${OUTDIR}/${NAME_PREFIX}

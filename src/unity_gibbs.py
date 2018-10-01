@@ -2,7 +2,7 @@ from unity_metropolis import *
 from auxilary import *
 import sys
 import scipy.sparse as sp
-import pandas as pd 
+import pandas as pd
 
 """
 unity_gibbs.py
@@ -119,7 +119,7 @@ def joint_prob_ivar(p_est, c_est, gamma_est, h_est, z, N, V_half):
 
 """
 def draw_c_gamma(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z):
-    
+
     z = z.reshape(len(z))
 
     M = len(c_old) # number of SNPs
@@ -133,14 +133,19 @@ def draw_c_gamma(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z):
 
 
     # loop through all SNPs
+    mu_list = []
     for m in range(0, M):
 
         # calculate variance term of posterior of gamma, where P(gamma|.) ~ N(mu_m, sigma_m)
         V_m_half = V_half[:, m]
+
         bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*(np.matmul(np.transpose(V_m_half), V_m_half))
         sigma_m = 1/float(bottom_sigma_m)
 
+
         beta = np.multiply(gamma_old, c_old)
+        #print("Beta:")
+        #print(beta)
 
         if m > 0:
             beta_m = beta[m-1]
@@ -164,6 +169,8 @@ def draw_c_gamma(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z):
         temp_term = np.matmul(np.transpose(r_m), V_m_half)
 
         mu_m = (sigma_m/float(sigma_e))*temp_term
+
+        mu_list.append(mu_m)
 
         # calculate params for posterior of c, where P(c|.) ~ Bern(d_m)
         var_term = math.sqrt(sigma_m/float(sigma_g))
@@ -196,6 +203,8 @@ def draw_c_gamma(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z):
         c_old[m] = c_m
         gamma_old[m] = gamma_m
 
+    print("mu list")
+    print(mu_list)
     return c_t, gamma_t
 
 
@@ -682,10 +691,13 @@ def gibbs_ivar(z, h, N, M, V_half, p_init=None, c_init=None, gamma_init=None, it
 
 def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000):
 
+    print("c init:")
+    print(c_init_list)
+
     # hold samples of p
     p_list = []
-    gamma_t_list = [] 
-    c_t_list = [] 
+    gamma_t_list = []
+    c_t_list = []
 
     # initialize params
     if p_init is None:
@@ -695,10 +707,10 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
 
     B = len(z_list) # number of blocks
 
-    # loop through all blocks 
+    # loop through all blocks
     for b in range(0, B):
 
-        # read in betas from gwas file 
+        # read in betas from gwas file
         z_b = z_list[b]
         M_b = len(z_list[b])
         sd = math.sqrt(H_snp)
@@ -730,7 +742,7 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
             M_b = len(z_list[b])
             sd = math.sqrt(H_snp)
 
-            # read in ld directly from file 
+            # read in ld directly from file
             V_half_b = np.loadtxt(ld_half_flist[b])
 
             # get values from prev iteration
@@ -746,6 +758,12 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
             # replace in larger lists
             gamma_t_list[b] = gamma_t_b
             c_t_list[b] = c_t_b
+
+            print("Sampled c:")
+            print(c_t_b)
+
+            print("Sampled gamma:")
+            print(gamma_t_b) 
 
         # end loop over blocks
         p_t = draw_p_ivar_gw(c_t_list)
@@ -971,14 +989,9 @@ def draw_p_ivar_gw(c_t_list):
     c_t_list = np.asarray(c_t_list)
     c_t_list = np.hstack(c_t_list)
     M = np.asarray(c_t_list).size
-    
+
     alpha1 = beta_lam + np.sum(c_t_list)
     alpha2 = beta_lam + (M - np.sum(c_t_list))
     p = st.beta.rvs(alpha1, alpha2)
 
     return p
-
-
-
-
-

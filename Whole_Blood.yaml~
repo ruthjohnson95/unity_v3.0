@@ -1,0 +1,7 @@
+TISSUE: Whole_Blood
+SAMPLE SIZE: 338
+GTEX DIR: /u/flashscratch/r/ruthjohn
+OUTDIR: /u/home/r/ruthjohn/ruthjohn/Gtex_analysis
+PLINK: /u/home/r/ruthjohn/pasaniucdata/software/plink
+REF PANEL: /u/project/pasaniuc/pasaniucdata/DATA/LDSC/1000G_EUR/1000G_EUR_Phase3_plink/1000G.EUR.QC
+SEED: 2018
