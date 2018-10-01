@@ -161,10 +161,16 @@ def main():
     logging.info("Found a total of %d SNPs accross all files" % M_gw)
 
     # run experiment
-    H_snp = float(options.H_snp)
+    H_snp = options.H_snp
+    if H_snp is None:
+        # calculate H_snp from H_gwas and M 
+        logging.info("User did not provide H_snp...calculating as H_gwas/M")
+        H_snp = H/float(M_gw)
+    else:
+        H_snp = float(H_snp)
+
+    # genomewide heritability 
     H_gw = H
-    #z_arr = np.array(z_list)
-    #z = z_arr.flatten()
 
     logging.info("Estimating start of chain with zscore cutoff.")
     p_init, c_init_list = smart_start(z_list, N)
@@ -178,7 +184,7 @@ def main():
         p_est, p_var, p_list = (None, None, None)
 
     # log results to log file
-    outfile = join(outdir, id +'.' + str(seed) + ".log")
+    outfile = join(outdir, id +'.' + str(seed) + ".unity_v3.log")
     f = open(outfile, 'w')
     print_func("Estimate p: %.4f" % p_est, f)
 

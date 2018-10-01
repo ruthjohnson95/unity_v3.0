@@ -58,11 +58,14 @@ def main():
     parser.add_option("--ld_dir", dest="ld_dir")
     parser.add_option("--blocks", dest="blocks")
     parser.add_option("--ld_file", dest="ld_file")
+    parser.add_option("--ld_out", dest="ld_out")
 
     (options, args) = parser.parse_args() 
     ld_half_dir = options.ld_half_dir 
     ld_dir = options.ld_dir 
     ld_file = options.ld_file 
+    ld_out = options.ld_out 
+
     B = options.blocks
     if B is not None:
         B = int(B) 
@@ -82,8 +85,13 @@ def main():
         ld_file_base = os.path.basename(ld_file_b)
         ld_string = ld_file_base.split('.')
         ld_prefix = ld_string[0] + '.'+ ld_string[1] + '.' + ld_string[2] + '.half_ld'
-        ld_half_fname = os.path.join(ld_half_dir, ld_prefix)
+        if ld_out is not None: # use user specified outfname
+            ld_half_fname = ld_out 
+        else:
+            ld_half_fname = os.path.join(ld_half_dir, ld_prefix)
+
         np.savetxt(ld_half_fname ,ld_half_b)
+
         logging.info("Transformed ld matricies can be found in: %s" % ld_half_dir)
     elif ld_dir is not None:
         for ld_file in os.listdir(ld_dir):
@@ -101,6 +109,7 @@ def main():
                 ld_string = ld_file_base.split('.') 
                 ld_prefix = ld_string[0] + '.'+ ld_string[1] + '.' + ld_string[2] + '.half_ld'
                 ld_half_fname = os.path.join(ld_half_dir, ld_prefix)
+
                 np.savetxt(ld_half_fname ,ld_half_b)
                 
                 logging.info("Saving 1/2 power ld matrix to: %s" % os.path.basename(ld_half_fname))

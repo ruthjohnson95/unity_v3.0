@@ -203,8 +203,8 @@ def draw_c_gamma(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z):
         c_old[m] = c_m
         gamma_old[m] = gamma_m
 
-    print("mu list")
-    print(mu_list)
+   # print("mu list")
+   # print(mu_list)
     return c_t, gamma_t
 
 
@@ -691,8 +691,8 @@ def gibbs_ivar(z, h, N, M, V_half, p_init=None, c_init=None, gamma_init=None, it
 
 def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000):
 
-    print("c init:")
-    print(c_init_list)
+  #  print("c init:")
+  #  print(c_init_list)
 
     # hold samples of p
     p_list = []
@@ -759,11 +759,11 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
             gamma_t_list[b] = gamma_t_b
             c_t_list[b] = c_t_b
 
-            print("Sampled c:")
-            print(c_t_b)
+#            print("Sampled c:")
+#            print(c_t_b)
 
-            print("Sampled gamma:")
-            print(gamma_t_b) 
+ #           print("Sampled gamma:")
+ #           print(gamma_t_b) 
 
         # end loop over blocks
         p_t = draw_p_ivar_gw(c_t_list)

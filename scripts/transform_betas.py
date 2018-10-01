@@ -75,7 +75,6 @@ def main():
     parser.add_option("--ld_file", dest="ld_file")
 
     (options, args) = parser.parse_args() 
-    print options 
 
     gwas_dir = options.gwas_dir 
     ld_dir = options.ld_dir 
@@ -146,7 +145,7 @@ def main():
 
     else: 
 
-        logging.inf("ERROR: user did not provide ld/gwas dir or ld/gwas filenames...exiting")
+        logging.info("ERROR: user did not provide ld/gwas dir or ld/gwas filenames...exiting")
         exit(1)
     
 
