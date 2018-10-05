@@ -40,7 +40,7 @@ def calc_mu_dp(mu_old, delta_c_b, delta_gamma_b, V_half, nu_m, m):
 	return mu_m
 
 
-def calc_mu_opt(gamma_old, c_old, z, V_half, sigma_g, sigma_e, m):
+def calc_mu_opt(gamma_old, c_old, z, a_matrix, psi, V_half, sigma_g, sigma_e, m):
 
 	"""
 	M = len(z)
@@ -66,32 +66,38 @@ def calc_mu_opt(gamma_old, c_old, z, V_half, sigma_g, sigma_e, m):
 
 	# OPTIMIZATION
 	V_m_half = V_half[:, m]
-	bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*(np.matmul(np.transpose(V_m_half), V_m_half))
+	bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*a_matrix[m,m]
 	sigma_m = 1/float(bottom_sigma_m)
 	W_m = V_m_half
-	psi_m = np.dot(z, W_m)
+	#psi_m = np.dot(z, W_m)
+	psi_m = psi[m]
 	sum = 0
 	M = len(z)
+
+	# find nonzero indicies
+	nonzero_inds = np.nonzero(c_old)[0]
+	for i in nonzero_inds:
+		#W_i = V_half[:,i]
+		#a_im = np.dot(W_i, W_m)
+		a_im = a_matrix[i,m]
+		if i != m:
+			sum += a_im * gamma_old[i] * c_old[i]
+	"""
 	for i in range(0, M):
 		W_i = V_half[:,i]
 		a_im = np.dot(W_i, W_m)
 		if i != m:
 			sum += a_im * gamma_old[i] * c_old[i]
+	"""
 	temp_term = psi_m - sum
 	mu_m = (sigma_m/float(sigma_e))*temp_term
 	# end optimization
-
-
-	#print sum
-	#mu_m = (nu_m * psi_m) - (nu_m * sum)
-
-	#print("mu_m: %.4g" % mu_m)
 
 	return mu_m
 
 
 
-def draw_c_gamma_dp(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z, mu_b, delta_c_b, delta_gamma_b):
+def draw_c_gamma_dp(c_old, gamma_old, p_old, sigma_g, sigma_e, a_matrix, psi, V_half, z, mu_b, delta_c_b, delta_gamma_b):
 
 	z = z.reshape(len(z))
 
@@ -106,20 +112,20 @@ def draw_c_gamma_dp(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z, mu_b, 
 	for m in range(0, M):
 
 		# calculate variance term of posterior of gamma, where P(gamma|.) ~ N(mu_m, sigma_m)
-		V_m_half = V_half[:, m]
+		#V_m_half = V_half[:, m]
 
 		mu_old = mu_b[m]
 		c_old_m = c_old[m]
 		gamma_old_m = gamma_old[m]
 
 		# calculate params for posterior of c, where P(c|.) ~ Bern(d_m)
-		bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*(np.matmul(np.transpose(V_m_half), V_m_half))
+		#bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*(np.matmul(np.transpose(V_m_half), V_m_half))
+		bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*a_matrix[m,m]
 		sigma_m = 1/float(bottom_sigma_m)
 		var_term = math.sqrt(sigma_m/float(sigma_g))
 
-		nu_m = var_term
 		#mu_m =  calc_mu_dp(mu_old, delta_c_b, delta_gamma_b, V_half, nu_m, m)
-		mu_m = calc_mu_opt(gamma_old, c_old, z, V_half, sigma_g, sigma_e, m)
+		mu_m = calc_mu_opt(gamma_old, c_old, z, a_matrix, psi, V_half, sigma_g, sigma_e, m)
 
 		#print("mu old: %.4g; mu new: %.4g" % (mu_old, mu_m))
 		a = 0.50 * 1 / (float(sigma_m)) * mu_m * mu_m
@@ -167,6 +173,8 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 	mu_list = []
 	delta_c_list = []
 	delta_gamma_list = []
+	a_matrix_list = []
+	psi_list = []
 
     # initialize params
 	if p_init is None:
@@ -178,6 +186,7 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 	logging.info("Found %d blocks" % B)
 
 	logging.info("Initializing first iteration")
+
 	# loop through all blocks
 	for b in range(0, B):
 
@@ -220,6 +229,26 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 		gamma_t = np.zeros(M_b)
 		c_t = np.zeros(M_b)
 
+		# a-matrix initialization
+		a_matrix_b = np.empty((M_b, M_b))
+		for i in range(0, M_b):
+			for m in range(0, M_b):
+				V_half_i = V_half[:, i]
+				V_half_m = V_half[:, m]
+				a_im = np.dot(V_half_i, V_half_m)
+				a_matrix_b[i,m] = a_im
+
+		a_matrix_list.append(a_matrix_b)
+
+		# psi list
+		psi_b = np.zeros(M_b)
+		for m in range(0, M_b):
+			V_half_m = V_half[:, m]
+			psi_b[m] = np.dot(z_b, V_half_m)
+
+		psi_list.append(psi_b)
+
+
 		logging.info("Long calculation for initialization")
         for m in range(0, M_b):
 
@@ -233,9 +262,7 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 			bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*(np.matmul(np.transpose(V_m_half), V_m_half))
 			sigma_m = 1/float(bottom_sigma_m)
 
-
 			beta = np.multiply(gamma_old, c_old)
-
 
 			if m > 0:
 				beta_m = beta[m-1]
@@ -294,14 +321,14 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
         mu_list.append(mu_b)
 
 	p_t = draw_p_ivar_gw(c_t_list)
-	print "Sampled c"
-	print(c_old)
-	print "Sampled gamma"
-	print(gamma_old)
+	#print "Sampled c"
+	#print(c_old)
+	#print "Sampled gamma"
+	#print(gamma_old)
 	p_list.append(p_t)
 	print "Iteration %d: p(t) - %.4f" % (0, p_t)
-	print "Delta c"
-	print(delta_c_list)
+	#print "Delta c"
+	#print(delta_c_list)
 
 	# end loop through blocks
 
@@ -335,7 +362,9 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 			delta_gamma_b = delta_gamma_list[b]
 
 			#logging.info("Sampling c and gamma")
-			c_t_b, gamma_t_b, mu_b, delta_c_b, delta_gamma_b = draw_c_gamma_dp(c_t_b, gamma_t_b, p_t, sigma_g_b, sigma_e_b, V_half_b, z_b, delta_mu_b, delta_c_b, delta_gamma_b)
+			a_matrix = a_matrix_list[b]
+			psi = psi_list[b]
+			c_t_b, gamma_t_b, mu_b, delta_c_b, delta_gamma_b = draw_c_gamma_dp(c_t_b, gamma_t_b, p_t, sigma_g_b, sigma_e_b, a_matrix, psi, V_half, z_b, delta_mu_b, delta_c_b, delta_gamma_b)
 
 			# update running deltas
 			mu_list[b] = mu_b

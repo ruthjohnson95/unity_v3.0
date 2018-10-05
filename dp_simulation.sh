@@ -96,7 +96,7 @@ python scripts/half_ld.py --ld_file $LD_FILE --ld_half_dir $LD_HALF_DIR
 
 # run inference 
 ITS=100
-python src/unity_v3_dp.py --seed $SEED --H_gwas $H_GWAS --H_snp $H_SNP --id $PREFIX --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE --outdir $SIMDIR --its $ITS --dp 'n'
+python src/unity_v3_dp.py --seed $SEED --H_gwas $H_GWAS --H_snp $H_SNP --id $PREFIX --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE --outdir $SIMDIR --its $ITS --dp 'y'
 
 
 done
