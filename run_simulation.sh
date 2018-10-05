@@ -32,6 +32,7 @@ do
 	OUTDIR=${OUTDIR}/${SIM_NAME}
 	mkdir -p $OUTDIR
 
+	echo "PSIM: "$P_SIM 
         # generate sample gwas 
 	python scripts/simulate.py --sim_name $SIM_NAME --h_snp $H_SNP --h_gwas $H_GWAS --p_sim $P_SIM --N $N  --seed $SEED --ld_file $LD_FILE --outdir $OUTDIR
 
@@ -47,8 +48,9 @@ do
 #	python scripts/half_ld.py --ld_file $LD_FILE  --ld_out $LD_HALF_FILE
 	
         # run inference 
-	ITS=3
-	python src/unity_v3_block.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --non_inf_var 'n' 
-
+	ITS=1000
+#	python src/unity_v3_block.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --non_inf_var 'n' 
+        python src/unity_v3_dp.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_fi\
+le $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --dp 'y'
       fi 
 done 

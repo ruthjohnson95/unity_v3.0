@@ -206,8 +206,8 @@ def draw_c_gamma(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z):
         c_old[m] = c_m
         gamma_old[m] = gamma_m
 
-    print("mu list")
-    print(mu_list)
+    #print("mu list")
+    #print(mu_list)
 
     return c_t, gamma_t
 
