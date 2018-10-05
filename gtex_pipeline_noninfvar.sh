@@ -8,7 +8,7 @@
 
 # number of tasks for number of genes 
 
-SGE_TASK_ID=2
+#SGE_TASK_ID=2
 
 source /u/local/Modules/default/init/modules.sh
 module load python/2.7
@@ -115,7 +115,7 @@ echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
 	DATE=`date '+%Y-%m-%d %H:%M:%S'`
 	echo $DATE" Starting inference with Unity v3.0"
 	ITS=10000
-	python src/unity_v3_block.py --seed $SEED --H_gwas $H_GWAS  --id $GENE_PREFIX --ld_half_file $LD_HALF_FILE --gwas_file $LOCUS  --outdir $OUTDIR --its $ITS --non_inf_var 'n'
+	python src/unity_v3_block.py --seed $SEED --H_gwas $H_GWAS  --id $GENE_PREFIX --ld_half_file $LD_HALF_FILE --gwas_file $LOCUS  --outdir $OUTDIR --its $ITS --non_inf_var 'y'
 
 fi # end SGE if-statement 
 

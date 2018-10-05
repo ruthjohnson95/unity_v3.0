@@ -74,6 +74,7 @@ def initial_estimates(z, H_gw, M_gw, N):
 
     return p_est
 
+
 def smart_start(z_list, N):
     c_init_list = []
     M_gw = 0
@@ -81,7 +82,7 @@ def smart_start(z_list, N):
     # concert betas to zscore
     for z_b in z_list:
         zscores_b = np.multiply(z_b, np.sqrt(N))
-        causal_inds_list_b = np.where(zscores_b >= 3.0)
+        causal_inds_list_b = np.where(zscores_b >= 5.0)
         causal_inds_b = causal_inds_list_b[0]
         M = len(z_b)
         M_gw += M
@@ -127,6 +128,7 @@ def main():
     parser.add_option("--gwas_file", dest="gwas_file")
     parser.add_option("--outdir", dest="outdir")
     parser.add_option("--dp", dest="DP", default='n')
+    parser.add_option("--non_inf_var", default='n')
     (options, args) = parser.parse_args()
 
     # set seed
@@ -141,7 +143,13 @@ def main():
     ld_half_file = options.ld_half_file
     gwas_file = options.gwas_file
     outdir = options.outdir
-    DP = options.DP 
+    DP = options.DP
+    non_inf_var = options.non_inf_var
+    if non_inf_var == 'n':
+        non_inf_var = False
+    else:
+        non_inf_var = True
+        logging.info("NOTE: Using  non-infinitesimal variance paramerization")
 
     # get filenames for gwas and ld (assumes full path is given)
     gwas_flist = [gwas_file]
@@ -163,13 +171,13 @@ def main():
     # run experiment
     H_snp = options.H_snp
     if H_snp is None:
-        # calculate H_snp from H_gwas and M 
+        # calculate H_snp from H_gwas and M
         logging.info("User did not provide H_snp...calculating as H_gwas/M")
         H_snp = H/float(M_gw)
     else:
         H_snp = float(H_snp)
 
-    # genomewide heritability 
+    # genomewide heritability
     H_gw = H
 
     logging.info("Estimating start of chain with zscore cutoff.")
@@ -179,7 +187,7 @@ def main():
     gamma_init_list = None
 
     if DP == 'n':
-        p_est, p_var, p_list = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS)
+        p_est, p_var, p_list = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
     else:
         p_est, p_var, p_list = (None, None, None)
 

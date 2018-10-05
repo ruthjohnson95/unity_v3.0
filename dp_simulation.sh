@@ -73,11 +73,11 @@ else
 	snp_list=$RSID_DIR/$rsid_file
 	file_prefix="${rsid_file%.*}"
 	CHR=$(echo $file_prefix | cut -d'.' -f1 | sed 's/[^0-9]*//g' )
-#	$PLINK --bfile $REF_PATH.$CHR --extract $snp_list --make-just-bim --biallelic-only --out $SIMDIR/$file_prefix
+	$PLINK --bfile $REF_PATH.$CHR --extract $snp_list --make-just-bim --biallelic-only --out $SIMDIR/$file_prefix
 
 # simulate gwas effects
 SEED=$SGE_TASK_ID
-#python scripts/simulate.py --sim_name $SIM_NAME --h_gwas $H_GWAS --h_snp $H_SNP --p_sim $P_SIM --N $N --rsid_list $RSID_LIST --ld_list $LD_LIST --outdir $SIMDIR --bim_dir $SIMDIR --ld_dir $LD_DIR --seed $SEED --M $M
+python scripts/simulate.py --sim_name $SIM_NAME --h_gwas $H_GWAS --h_snp $H_SNP --p_sim $P_SIM --N $N --rsid_list $RSID_LIST --ld_list $LD_LIST --outdir $SIMDIR --bim_dir $SIMDIR --ld_dir $LD_DIR --seed $SEED 
 
 # gwas/ld files 
 PREFIX=$(echo $rsid_file | cut -d'.' -f1,2,3)
@@ -89,14 +89,14 @@ LD_FILE=$LD_DIR/$PREFIX.ld
 LD_HALF_DIR=$LD_DIR'_half'
 mkdir -p $LD_HALF_DIR
 
-#python scripts/transform_betas.py --gwas_file $GWAS_FILE --ld_file $LD_FILE 
+python scripts/transform_betas.py --gwas_file $GWAS_FILE --ld_file $LD_FILE 
 LD_HALF_FILE=$LD_HALF_DIR/$PREFIX.half_ld 
 
-#python scripts/half_ld.py --ld_file $LD_FILE --ld_half_dir $LD_HALF_DIR 
+python scripts/half_ld.py --ld_file $LD_FILE --ld_half_dir $LD_HALF_DIR 
 
 # run inference 
-ITS=3
-python src/unity_v3_dp.py --seed $SEED --H_gwas $H_GWAS --H_snp $H_SNP --id $PREFIX --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE --outdir $SIMDIR --its $ITS --dp 'y'
+ITS=100
+python src/unity_v3_dp.py --seed $SEED --H_gwas $H_GWAS --H_snp $H_SNP --id $PREFIX --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE --outdir $SIMDIR --its $ITS --dp 'n'
 
 
 done

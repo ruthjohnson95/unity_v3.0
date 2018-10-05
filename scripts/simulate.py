@@ -10,6 +10,8 @@ import logging
 import pandas as pd
 import re
 
+SEED = 0
+
 # setup global logging
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 
@@ -36,7 +38,7 @@ def simulate_ivar_LD(p_sim, sigma_g_m, N, M, V):
 # simulate gwas effects with infinitesimal variance (h/M) WITHOUT LD
 def simulate_ivar_gw_noLD(p_sim, h_snp, h_gwas, N, M, sim_name, outdir):
     sigma_g_m = h_snp
-    h_sim = h_gwas 
+    h_sim = h_gwas
 
     c = st.bernoulli.rvs(p=p_sim, size=M)
     true_p = (np.sum(c)/float(M))
@@ -62,6 +64,35 @@ def simulate_ivar_gw_noLD(p_sim, h_snp, h_gwas, N, M, sim_name, outdir):
     logging.info("Saving simulated gwas to: %s" % outfile)
 
     return
+
+
+# simulate GWAS only for 1 block
+def simulate_ivar_block_LD(p_sim, h_snp, h_gw, N, ld_file, outdir):
+
+    sigma_g_m = h_snp
+    ld_b = np.loadtxt(ld_file)
+    M = ld_b.shape[0]
+
+    logging.info("Simulating effect sizes using ld matrix: %s" % os.path.basename(ld_file))
+
+    z_b, c_b, gamma_b, true_p = simulate_ivar_LD(p_sim, sigma_g_m, N, M, ld_b)
+
+    df = pd.DataFrame(data=z_b, columns=['BETA_STD'])
+
+    locus_fname = 'chr'+str(SEED)+'.0.0'+'.gwas'
+
+    locus_full_fname = os.path.join(outdir, locus_fname)
+
+    df.to_csv(locus_full_fname, sep=' ', index=False)
+
+    true_p = np.sum(c_b)/float(M)
+
+    logging.info("True prop causals: %.4f" % true_p)
+
+    logging.info("Saving locus to: %s" % locus_fname)
+
+    return
+
 
 
 # simulates GWAS across entire genome
@@ -91,12 +122,12 @@ def simulate_ivar_gw_LD(p_sim, h_snp, h_sim, N, ld_list_file, rsid_list_file, ld
 
                 # open bim file containing BP/CHR info
                 rsid_file = os.path.basename(rsid_file)
-                rsid_file = rsid_file.rstrip() 
+                rsid_file = rsid_file.rstrip()
                 bim_prefix = rsid_file.split('.')
 #                CHR = re.sub("\D", "", chr_prefix[0])
-                full_bim_file =  os.path.join(bim_dir, bim_prefix[0]+'.'+bim_prefix[1]+'.'+bim_prefix[2]+'.bim') 
+                full_bim_file =  os.path.join(bim_dir, bim_prefix[0]+'.'+bim_prefix[1]+'.'+bim_prefix[2]+'.bim')
 
-                logging.info("Using bim file for SNP/BP info: %s" % full_bim_file) 
+                logging.info("Using bim file for SNP/BP info: %s" % full_bim_file)
 
                 df = pd.read_csv(full_bim_file, header=None, sep='\t')
 
@@ -123,8 +154,9 @@ def print_header(sim_name, p_sim, h_sim, N, outdir, rsid_list, ld_list, bim_dir,
     logging.info("Simulating with params -- p: %.4f, H2: %.4f, N: %d" % (p_sim, h_sim, N))
 
     if None in [rsid_list, ld_list, bim_dir, ld_dir]: # missing LD param
-        logging.info("Did not find information for LD...simulating without LD")
-        logging.info("Going to simulate %d SNPs" % M)
+#        logging.info("Did not find information for LD...simulating without LD")
+        if M is not None:
+            logging.info("Going to simulate %d SNPs" % M)
 
 
     else:
@@ -148,10 +180,11 @@ def main():
     parser.add_option("--bim_dir", dest="bim_dir")
     parser.add_option("--ld_dir", dest="ld_dir")
     parser.add_option("--seed", dest="seed", default=100)
+    parser.add_option("--ld_file", dest="ld_file")
     parser.add_option("--M", dest="M")
 
     (options, args) = parser.parse_args()
-    print options 
+    print options
 
     sim_name = options.sim_name
     h_gwas = float(options.h_gwas)
@@ -164,22 +197,27 @@ def main():
     rsid_list = options.rsid_list
     bim_dir = options.bim_dir
     ld_dir = options.ld_dir
+    ld_file = options.ld_file
     M = options.M
-    if M != 'NA':
+    if M is not None:
         M = int(M)
 
     # set the seed
-    np.random.seed(seed)
+    global SEED
+    SEED = seed
+    np.random.seed(SEED)
 
     # print the header for user
     print_header(sim_name, p_sim, h_snp, N, outdir, rsid_list, ld_list, bim_dir, ld_dir, M)
 
-    if 'NA' in [rsid_list, ld_list, bim_dir, ld_dir]:
+    if 'NA' in [rsid_list, ld_list, bim_dir, ld_dir, ld_file]:
         # no LD
         simulate_ivar_gw_noLD(p_sim, h_snp, h_gwas, N, M, sim_name, outdir)
+
+    elif ld_file is not None: # simulate just from LD file
+        simulate_ivar_block_LD(p_sim, h_snp, h_gwas, N, ld_file, outdir)
     else:
         # LD
-        print(ld_dir)
         simulate_ivar_gw_LD(p_sim, h_snp, h_gwas, N, ld_list, rsid_list, ld_dir, bim_dir, outdir)
 
     logging.info("FINISHED simulating")

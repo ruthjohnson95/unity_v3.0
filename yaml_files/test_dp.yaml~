@@ -1,6 +1,6 @@
 SIM NAME: test_dp
 H GWAS: 0.25
-P SIM: 0.80
+P SIM: 0.25
 SAMPLE SIZE: 500000
 OUTDIR: results
 LD LIST: small_locus.ld.list

@@ -1,0 +1,7 @@
+SIM NAME: N300_noninfvar_debug
+H GWAS: 0.05
+P SIM: 0.01
+SAMPLE SIZE: 300
+OUTDIR: results
+H SNP: 0.016666666666666666
+LD FILE: /u/home/r/ruthjohn/ruthjohn/Gtex_analysis/GTEx.Whole_Blood.ENSG00000024862.12.CCDC28A.ld

@@ -6,7 +6,7 @@
 #$ -o unity_v3_block_chr10.log
 #$ -t 1-85:1
 
-#SGE_TASK_ID=1
+SGE_TASK_ID=1
 
 source /u/local/Modules/default/init/modules.sh
 module load python/2.7
@@ -69,7 +69,6 @@ else
     for rsid_file in `cat $RSID_LIST`
     do
 	COUNTER=$((COUNTER+1))
-
 	if [[ $COUNTER -eq $SGE_TASK_ID ]]
 	then 
 

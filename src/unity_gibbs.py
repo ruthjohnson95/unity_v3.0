@@ -3,6 +3,10 @@ from auxilary import *
 import sys
 import scipy.sparse as sp
 import pandas as pd
+import logging
+
+logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
+
 
 """
 unity_gibbs.py
@@ -142,7 +146,6 @@ def draw_c_gamma(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z):
         bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*(np.matmul(np.transpose(V_m_half), V_m_half))
         sigma_m = 1/float(bottom_sigma_m)
 
-
         beta = np.multiply(gamma_old, c_old)
         #print("Beta:")
         #print(beta)
@@ -203,102 +206,10 @@ def draw_c_gamma(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z):
         c_old[m] = c_m
         gamma_old[m] = gamma_m
 
-   # print("mu list")
-   # print(mu_list)
+    print("mu list")
+    print(mu_list)
+
     return c_t, gamma_t
-
-
-
-def draw_c_gamma_speedup(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, s_old, z):
-
-    M = len(c_old) # number of SNPs
-
-    # hold new values for c-vector and gamma-vector
-    c_t = np.zeros(M)
-
-    gamma_t = np.zeros(M)
-
-    beta_m_old = 100
-
-
-    # loop through all SNPs
-    for m in range(0, M):
-
-        V_m_half = V_half[:, m]
-
-        # check for old SNP
-        if c_old[m] == 0:
-            # use residual from previous SNP
-            r_m = list(s_old)
-        else: # recalculate residual
-            end_term = np.multiply(V_m_half, gamma_old[m])
-            r_m = s_old + end_term
-
-        # calculate variance term of posterior of gamma, where P(gamma|.) ~ N(mu_m, sigma_m)
-        bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*(np.matmul(np.transpose(V_m_half), V_m_half))
-        sigma_m = 1/float(bottom_sigma_m)
-
-        beta = np.multiply(gamma_old, c_old)
-
-        if m > 0:
-            beta_m = beta[m-1]
-        else:
-            beta_m = 0
-
-        #if beta_m_old != beta_m:
-        #    middle_term = np.matmul(V_half, beta)
-
-        #if m > 0:
-        #    beta_m_old = beta[m]
-        #else: # make sure we always calculate for first SNP
-        #    beta_m_old = 10
-
-        beta_m_old = beta[m]
-
-        # calculate mean term of posterior of gamma, where P(gamma|.) ~ N(mu_m, sigma_m)
-        temp_term = np.matmul(np.transpose(r_m), V_m_half)
-        mu_m = (sigma_m/float(sigma_e))*temp_term
-
-        # calculate params for posterior of c, where P(c|.) ~ Bern(d_m)
-        var_term = math.sqrt(sigma_m/float(sigma_g))
-
-        a = 0.50 * 1 / (float(sigma_m)) * mu_m * mu_m
-
-        # check for overflow
-        if a > EXP_MAX:
-            a = EXP_MAX
-
-        # Bernoulli parameter, where P(c|.) ~ Bern(d_m)
-        d_m = (p_old*var_term*math.exp(a))/float(p_old*var_term*math.exp(a) + (1-p_old))
-
-        # draw c_m
-        try:
-            c_m = st.bernoulli.rvs(d_m)
-        except:
-            break
-
-        # draw gamma_m
-        if c_m == 0:
-            gamma_m = 0
-            s_m = list(r_m)
-        else:
-            gamma_m = st.norm.rvs(mu_m, math.sqrt(sigma_m))
-            s_m = np.subtract(r_m , np.multiply(V_m_half, gamma_m))
-
-        # update values
-        c_t[m] = c_m
-        gamma_t[m] = gamma_m
-
-        c_old[m] = c_m
-        gamma_old[m] = gamma_m
-
-        s_old = list(s_m)
-
-    # update s for next iteration of sampler
-    s_t = list(s_old)
-
-    return c_t, gamma_t, s_t
-
 
 
 
@@ -689,7 +600,7 @@ def gibbs_ivar(z, h, N, M, V_half, p_init=None, c_init=None, gamma_init=None, it
     return p_est, p_var, gamma_est, c_est, est_density, p_list, maps
 
 
-def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000):
+def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000, non_inf_var=False):
 
   #  print("c init:")
   #  print(c_init_list)
@@ -713,7 +624,11 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
         # read in betas from gwas file
         z_b = z_list[b]
         M_b = len(z_list[b])
-        sd = math.sqrt(H_snp)
+
+        if non_inf_var:
+            sd = math.sqrt(H_gw/float(p_t*M_b))
+        else:
+            sd = math.sqrt(H_snp)
 
         # save old value to see see if accepted/rejected
         p_old = p_t
@@ -740,7 +655,6 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
             # get params for block b
             z_b = z_list[b]
             M_b = len(z_list[b])
-            sd = math.sqrt(H_snp)
 
             # read in ld directly from file
             V_half_b = np.loadtxt(ld_half_flist[b])
@@ -749,7 +663,17 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
             gamma_t_b = gamma_t_list[b]
             c_t_b = c_t_list[b]
 
-            sigma_g_b = H_snp
+            if non_inf_var: # update sigma_g with new p value
+                # DEBUGGING
+                if i == 0:
+                    logging.info("WARNING: USING DEBUGGING MODE OF FIXED P FOR VARIANCE")
+                p_t = 0.01
+                sigma_g_b = math.sqrt(H_gw/float(p_t*M_b))
+            else:
+                sigma_g_b = H_snp
+
+            #logging.info("Sigma_g: %.4g" % sigma_g_b)
+
             sigma_e_b = (1 - H_gw) / N
 
             # sample causal vector and effects for  block b
@@ -763,7 +687,7 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
 #            print(c_t_b)
 
  #           print("Sampled gamma:")
- #           print(gamma_t_b) 
+ #           print(gamma_t_b)
 
         # end loop over blocks
         p_t = draw_p_ivar_gw(c_t_list)
@@ -772,7 +696,7 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
         p_list.append(p_t)
 
         # print debugging-info
-        if i <= 10 or i % 1 == 0:
+        if i <= 10 or i % 10 == 0:
             print("Iteration %d: sampled p: %.4f") % (i, p_t)
 
     # end loop iterations
@@ -782,111 +706,6 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
 
     return p_est, p_var, p_list
 
-
-def gibbs_ivar_gw_speedup(z_list, h_list, N, ld_list, p_init=None, c_init_list=None, gamma_init_list=None, its=5000):
-
-    # hold samples of p
-    p_list = []
-    gamma_list = []
-    gamma_t_list = []
-    c_list = []
-    c_t_list = []
-    s_list = []
-    s_t_list = []
-
-    # initialize params
-    if p_init is None:
-        p_t = st.beta.rvs(.2, .2)
-    else:
-        p_t= p_init
-
-    B = len(z_list) # number of blocks
-
-    for b in range(0, B):
-        H_b = h_list[b]
-        M_b = len(z_list[b])
-        #sd = math.sqrt(H_b / float(M_b))
-        sd = math.sqrt(H_b)
-
-        # save old value to see see if accepted/rejected
-        p_old = p_t
-
-        if gamma_init_list is None:
-            gamma_t_b = st.norm.rvs(loc=0, scale=sd, size=M_b)
-        else:
-            gamma_t_b = list(np.multiply(gamma_init_list[b], c_init_list[b]))
-
-        if c_init_list is None:
-            c_t_b = st.bernoulli.rvs(p=p_old, size=M_b)
-        else:
-            c_t_b = list(c_init_list[b])
-
-
-        # build list of blocks for next iteration
-        gamma_t_list.append(gamma_t_b)
-        c_t_list.append(c_t_b)
-
-        # build list of blocks for running avg
-        gamma_list.append(gamma_t_b)
-        c_list.append(c_t_b)
-
-        # initialize s for speedup
-        c_gamma_b = np.multiply(c_t_b, gamma_t_b)
-        s_b = z_list[b] - np.matmul(ld_list[b], c_gamma_b)
-        s_t_list.append(s_b)
-
-    # end loop initializing first iteration
-
-
-    for i in range(0, its):
-        for b in range(0, B):
-
-            # get params for block b
-            M_b = len(z_list[b])
-            H_b = h_list[b]
-            V_half_b = ld_list[b]
-            z_b = z_list[b]
-
-            # get values from prev iteration
-            gamma_t_b = gamma_t_list[b]
-            c_t_b = c_t_list[b]
-            s_t_b = s_t_list[b]
-
-            sigma_g_b = H_b / float(M_b)
-            sigma_e_b = (1 - H_b) / N
-
-            # sample causal vector and effects for  block b
-            c_t_b, gamma_t_b, s_t_b = draw_c_gamma_speedup(c_t_b, gamma_t_b, p_t, sigma_g_b, sigma_e_b, V_half_b, s_t_b, z_b)
-
-            # replace in larger lists
-            gamma_t_list[b] = gamma_t_b
-            c_t_list[b] = c_t_b
-            s_t_list[b] = s_t_b
-
-            # add to running average
-            gamma_list[b] = np.add(gamma_list[b], gamma_t_b)
-            c_list[b] = np.add(c_list[b], c_t_b)
-            # don't need to save average of s
-
-            if i <= 10 or i % 50 == 0:
-                print "Iteration %d: sampled c: %.4f" % (i, np.sum(c_t_b)/float(M_b))
-
-        # end loop over blocks
-        p_t = draw_p_ivar_gw(c_t_list)
-
-        # add p_t to list
-        p_list.append(p_t)
-
-        # print debugging-info
-        if i <= 10 or i % 50 == 0:
-            print("Iteration %d: sampled p: %.4f") % (i, p_t)
-
-    # end loop iterations
-    start = int(its*burn)
-    p_est = np.mean(p_list[start: ])
-    p_var = np.var(p_list[start: ])
-
-    return p_est, p_var, p_list
 
 
 

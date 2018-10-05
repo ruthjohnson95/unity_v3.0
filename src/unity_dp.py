@@ -6,7 +6,7 @@ import logging
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 
 
-def calc_mu_dp(mu_old, delta_c_b, delta_gamma_b, V_half, m):
+def calc_mu_dp(mu_old, delta_c_b, delta_gamma_b, V_half, nu_m, m):
 
 	#print "Delta c"
 	#print delta_c_b
@@ -27,8 +27,10 @@ def calc_mu_dp(mu_old, delta_c_b, delta_gamma_b, V_half, m):
 		#print "Delta c_m: %d" % delta_c_b_m
 		#print "Delta gamma_m: %.4g" % delta_gamma_b[i]
 		#print "Residual: %.4g" % residual
-		if i != m:
-			sum += residual
+		#if i != m:
+		sum += residual*nu_m
+		print("residual: %.4g" % residual)
+		print("nu m: %.4g" % nu_m)
 
 	#print sum
 	mu_m = mu_old - sum
@@ -36,6 +38,57 @@ def calc_mu_dp(mu_old, delta_c_b, delta_gamma_b, V_half, m):
 	#print("mu_m: %.4g" % mu_m)
 
 	return mu_m
+
+
+def calc_mu_opt(gamma_old, c_old, z, V_half, sigma_g, sigma_e, m):
+
+	"""
+	M = len(z)
+	sum = 0
+
+	# calculate variance term of posterior of gamma, where P(gamma|.) ~ N(mu_m, sigma_m)
+	V_m_half = V_half[:, m]
+
+	bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*(np.matmul(np.transpose(V_m_half), V_m_half))
+	sigma_m = 1/float(bottom_sigma_m)
+
+	beta = np.multiply(gamma_old, c_old)
+
+	middle_term = np.matmul(V_half, beta)
+
+	end_term = np.multiply(V_m_half, gamma_old[m])
+
+	r_m = z - middle_term + end_term
+
+	# calculate mean term of posterior of gamma, where P(gamma|.) ~ N(mu_m, sigma_m)
+	temp_term = np.matmul(np.transpose(r_m), V_m_half)
+	"""
+
+	# OPTIMIZATION
+	V_m_half = V_half[:, m]
+	bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*(np.matmul(np.transpose(V_m_half), V_m_half))
+	sigma_m = 1/float(bottom_sigma_m)
+	W_m = V_m_half
+	psi_m = np.dot(z, W_m)
+	sum = 0
+	M = len(z)
+	for i in range(0, M):
+		W_i = V_half[:,i]
+		a_im = np.dot(W_i, W_m)
+		if i != m:
+			sum += a_im * gamma_old[i] * c_old[i]
+	temp_term = psi_m - sum
+	mu_m = (sigma_m/float(sigma_e))*temp_term
+	# end optimization
+
+
+	#print sum
+	#mu_m = (nu_m * psi_m) - (nu_m * sum)
+
+	#print("mu_m: %.4g" % mu_m)
+
+	return mu_m
+
 
 
 def draw_c_gamma_dp(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z, mu_b, delta_c_b, delta_gamma_b):
@@ -58,13 +111,17 @@ def draw_c_gamma_dp(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z, mu_b, 
 		mu_old = mu_b[m]
 		c_old_m = c_old[m]
 		gamma_old_m = gamma_old[m]
-		mu_m =  calc_mu_dp(mu_old, delta_c_b, delta_gamma_b, V_half, m)
 
 		# calculate params for posterior of c, where P(c|.) ~ Bern(d_m)
 		bottom_sigma_m = 1/float(sigma_g) + (1/float(sigma_e))*(np.matmul(np.transpose(V_m_half), V_m_half))
 		sigma_m = 1/float(bottom_sigma_m)
 		var_term = math.sqrt(sigma_m/float(sigma_g))
 
+		nu_m = var_term
+		#mu_m =  calc_mu_dp(mu_old, delta_c_b, delta_gamma_b, V_half, nu_m, m)
+		mu_m = calc_mu_opt(gamma_old, c_old, z, V_half, sigma_g, sigma_e, m)
+
+		#print("mu old: %.4g; mu new: %.4g" % (mu_old, mu_m))
 		a = 0.50 * 1 / (float(sigma_m)) * mu_m * mu_m
 
 		# check for overflow
@@ -250,8 +307,8 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 
     # end loop initializing first iteration
 
-	logging.info("Mu initialization")
-	logging.info(mu_list)
+	#logging.info("Mu initialization")
+	#logging.info(mu_list)
 
 	for i in range(1, its): # start at iteration 1 b/c already drew p above
 		for b in range(0, B):
@@ -282,8 +339,8 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 
 			# update running deltas
 			mu_list[b] = mu_b
-			print("mu list")
-			print(mu_list)
+			#print("mu list")
+			#print(mu_list)
 
 			delta_c_list[b] = delta_c_b
 			delta_gamma_list[b] = delta_gamma_b

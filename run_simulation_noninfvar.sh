@@ -2,8 +2,8 @@
 #$ -cwd
 #$ -j y
 #$ -l h_data=5G,h_rt=5:00:00,highp
-#$ -o unity_v3_sims.log
-#$ -t 1-100:1
+#$ -o N300_noninfvar.log
+#$ -t 1-1:1
 
 SGE_TASK_ID=1
 
@@ -14,6 +14,7 @@ for i in {1..100}
 do
     COUNTER=$((COUNTER+1))
     if [[ $COUNTER -eq $SGE_TASK_ID ]]
+#    if [[ $COUNTER -eq $COUNTER ]]
     then
 
 	sim_yaml=$1
@@ -26,7 +27,7 @@ do
 	N=$(cat $sim_yaml | grep "SAMPLE SIZE" | cut -d':' -f2 | tr -d " \t\n\r" )
 	OUTDIR=$(cat $sim_yaml | grep "OUTDIR" | cut -d':' -f2 | tr -d " \t\n\r" )
 	LD_FILE=$(cat $sim_yaml | grep "LD FILE" | cut -d':' -f2 | tr -d " \t\n\r" )
-	SEED=$SGE_TASK_ID
+	SEED=$COUNTER
 
         # make simulation dir 
 	OUTDIR=${OUTDIR}/${SIM_NAME}
@@ -44,11 +45,11 @@ do
 	LD_PREFIX=${LD_BASE_FILE%.*}
 	LD_HALF_FILE=${OUTDIR}/${LD_PREFIX}.half_ld
 
-#	python scripts/half_ld.py --ld_file $LD_FILE  --ld_out $LD_HALF_FILE
+	python scripts/half_ld.py --ld_file $LD_FILE  --ld_out $LD_HALF_FILE
 	
         # run inference 
-	ITS=3
-	python src/unity_v3_block.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --non_inf_var 'n' 
+	ITS=10000
+	python src/unity_v3_block.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --non_inf_var 'y' 
 
       fi 
 done 

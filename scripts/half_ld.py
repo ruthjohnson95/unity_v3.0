@@ -84,10 +84,11 @@ def main():
 
         ld_file_base = os.path.basename(ld_file_b)
         ld_string = ld_file_base.split('.')
-        ld_prefix = ld_string[0] + '.'+ ld_string[1] + '.' + ld_string[2] + '.half_ld'
+
         if ld_out is not None: # use user specified outfname
             ld_half_fname = ld_out 
         else:
+            ld_prefix = ld_string[0] + '.'+ ld_string[1] + '.' + ld_string[2] + '.half_ld'
             ld_half_fname = os.path.join(ld_half_dir, ld_prefix)
 
         np.savetxt(ld_half_fname ,ld_half_b)
