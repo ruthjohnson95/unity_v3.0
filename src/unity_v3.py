@@ -144,7 +144,7 @@ def main():
     ld_half_ext = options.ld_half_ext
     gwas_ext = options.gwas_ext
     outdir = options.outdir
-    DP = options.DP 
+    DP = options.DP
 
     outfile = join(outdir, id +'.' + str(seed) + ".log")
     f = open(outfile, 'w')
@@ -187,18 +187,22 @@ def main():
     p_init, c_init_list = smart_start(z_list, N)
     logging.info("Initializing MCMC with starting value: p=%.4g" % p_init)
 
-    gamma_init_list = z_list 
+    gamma_init_list = z_list
 
     if DP == 'n':
-        p_est, p_var, p_list = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=z_list, its=ITS)
+        p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=z_list, its=ITS)
     else:
-        p_est, p_var, p_list = 
+        continue
 
     # log results to log file
     f = open(outfile, 'w')
     print_func("Estimate p: %.4f" % p_est, f)
 
     print_func("SD p: %.4g" % math.sqrt(p_var), f)
+
+    print_func("Avg log like: %.6g" % avg_log_like, f)
+
+    print_func("SD log like: %.4g" % math.sqrt(var_log_like), f)
 
     f.close()
 

@@ -610,6 +610,8 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
     gamma_t_list = []
     c_t_list = []
 
+    log_like_list = []
+
     # initialize params
     if p_init is None:
         p_t = st.beta.rvs(.2, .2)
@@ -665,10 +667,10 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
 
             if non_inf_var: # update sigma_g with new p value
                 # DEBUGGING
-                if i == 0:
-                    logging.info("WARNING: USING DEBUGGING MODE OF FIXED P FOR VARIANCE")
-                p_t = 0.01
-                sigma_g_b = math.sqrt(H_gw/float(p_t*M_b))
+                #if i == 0:
+                #    logging.info("WARNING: USING DEBUGGING MODE OF FIXED P FOR VARIANCE")
+                #p_t = 0.01
+                sigma_g_b = H_gw/float(p_t*M_b)
             else:
                 sigma_g_b = H_snp
 
@@ -692,19 +694,28 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
         # end loop over blocks
         p_t = draw_p_ivar_gw(c_t_list)
 
+        sigma_e = (1 - H_gw) / N
+        log_like_t = log_like(z_list, gamma_t_list, c_t_list, sigma_e, ld_half_flist)
+
+        # keep running total of log likelihood
+        log_like_list.append(log_like_t)
+
         # add p_t to list
         p_list.append(p_t)
 
         # print debugging-info
         if i <= 10 or i % 10 == 0:
-            print("Iteration %d: sampled p: %.4f") % (i, p_t)
+            print("Iteration %d: sampled p: %.4f, log-like: %4g") % (i, p_t, log_like_t)
 
     # end loop iterations
     start = int(its*burn)
     p_est = np.mean(p_list[start: ])
     p_var = np.var(p_list[start: ])
 
-    return p_est, p_var, p_list
+    avg_log_like = np.mean(log_like_list[start:])
+    var_log_like = np.var(log_like_list[start:])
+
+    return p_est, p_var, p_list, avg_log_like, var_log_like
 
 
 
@@ -811,6 +822,23 @@ def draw_p_ivar_gw(c_t_list):
 
     alpha1 = beta_lam + np.sum(c_t_list)
     alpha2 = beta_lam + (M - np.sum(c_t_list))
-    p = st.beta.rvs(alpha1, alpha2)
+    try:
+        p = st.beta.rvs(alpha1, alpha2)
+    except:
+        print c_t_list
 
     return p
+
+
+def log_like(z_list, gamma_t_list, c_t_list, sigma_e, V_half_flist):
+    total_log_like = 0
+
+    for z, gamma_t, c_t, V_half_fname in zip(z_list, gamma_t_list, c_t_list, V_half_flist):
+        V_half = np.loadtxt(V_half_fname)
+        M = len(z)
+        mu = np.matmul(V_half, np.multiply(gamma_t, c_t))
+        cov = np.eye(M)*sigma_e
+        log_like = st.multivariate_normal.logpdf(z, mu, cov)
+        total_log_like += log_like
+
+    return total_log_like

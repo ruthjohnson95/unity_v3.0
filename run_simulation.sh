@@ -45,12 +45,11 @@ do
 	LD_PREFIX=${LD_BASE_FILE%.*}
 	LD_HALF_FILE=${OUTDIR}/${LD_PREFIX}.half_ld
 
-#	python scripts/half_ld.py --ld_file $LD_FILE  --ld_out $LD_HALF_FILE
+	python scripts/half_ld.py --ld_file $LD_FILE  --ld_out $LD_HALF_FILE
 	
         # run inference 
-	ITS=1000
-#	python src/unity_v3_block.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --non_inf_var 'n' 
-        python src/unity_v3_dp.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_fi\
-le $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --dp 'y'
+	ITS=200
+	python src/unity_v3_block.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --non_inf_var 'n' --dp 'y' 
+
       fi 
 done 

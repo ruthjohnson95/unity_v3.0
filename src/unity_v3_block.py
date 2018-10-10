@@ -4,6 +4,7 @@ from os.path import isfile, join
 import pandas as pd
 import logging
 from scipy.optimize import minimize
+from unity_v3_dp import gibbs_ivar_gw_dp
 
 # global logging
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
@@ -127,7 +128,7 @@ def main():
     parser.add_option("--ld_half_file", dest="ld_half_file")
     parser.add_option("--gwas_file", dest="gwas_file")
     parser.add_option("--outdir", dest="outdir")
-    parser.add_option("--dp", dest="DP", default='n')
+    parser.add_option("--dp", dest="DP", default='y')
     parser.add_option("--non_inf_var", default='n')
     (options, args) = parser.parse_args()
 
@@ -168,35 +169,45 @@ def main():
     logging.info("Found a total of %d blocks" % blocks)
     logging.info("Found a total of %d SNPs accross all files" % M_gw)
 
+    logging.info("Estimating start of chain with zscore cutoff.")
+    p_init, c_init_list = smart_start(z_list, N)
+    logging.info("Initializing MCMC with starting value: p=%.4g" % p_init)
+
     # run experiment
     H_snp = options.H_snp
     if H_snp is None:
         # calculate H_snp from H_gwas and M
         logging.info("User did not provide H_snp...calculating as H_gwas/M")
-        H_snp = H/float(M_gw)
+        if non_inf_var:
+            H_snp = H/float(M_gw * p_init)
+        else:
+            H_snp = H/float(M_gw)
     else:
         H_snp = float(H_snp)
 
     # genomewide heritability
     H_gw = H
 
-    logging.info("Estimating start of chain with zscore cutoff.")
-    p_init, c_init_list = smart_start(z_list, N)
-    logging.info("Initializing MCMC with starting value: p=%.4g" % p_init)
-
     gamma_init_list = None
 
     if DP == 'n':
-        p_est, p_var, p_list = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
+        p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
     else:
-        p_est, p_var, p_list = (None, None, None)
+        logging.info("Using DP speedup")
+        p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
 
     # log results to log file
     outfile = join(outdir, id +'.' + str(seed) + ".unity_v3.log")
     f = open(outfile, 'w')
+
     print_func("Estimate p: %.4f" % p_est, f)
 
     print_func("SD p: %.4g" % math.sqrt(p_var), f)
+
+    print_func("Avg log like: %.6g" % avg_log_like, f)
+
+    print_func("SD log like: %.4g" % math.sqrt(var_log_like), f)
+
 
     f.close()
 

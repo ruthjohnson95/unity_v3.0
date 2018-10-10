@@ -49,7 +49,7 @@ do
 	
         # run inference 
 	ITS=10000
-	python src/unity_v3_block.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --non_inf_var 'y' 
+	python src/unity_v3_block.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --non_inf_var 'y' --dp 'n'  
 
       fi 
 done 

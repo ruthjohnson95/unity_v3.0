@@ -96,7 +96,6 @@ def calc_mu_opt(gamma_old, c_old, z, a_matrix, psi, V_half, sigma_g, sigma_e, m)
 	return mu_m
 
 
-
 def draw_c_gamma_dp(c_old, gamma_old, p_old, sigma_g, sigma_e, a_matrix, psi, V_half, z, mu_b, delta_c_b, delta_gamma_b):
 
 	z = z.reshape(len(z))
@@ -161,10 +160,7 @@ def draw_c_gamma_dp(c_old, gamma_old, p_old, sigma_g, sigma_e, a_matrix, psi, V_
 	return c_t, gamma_t, mu_b, delta_c_b, delta_gamma_b
 
 
-def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000):
-
-	logging.info("c init: ")
-	logging.info(c_init_list)
+def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000, non_inf_var=False):
 
 	# hold samples of p
 	p_list = []
@@ -175,6 +171,8 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 	delta_gamma_list = []
 	a_matrix_list = []
 	psi_list = []
+
+	log_like_list = []
 
     # initialize params
 	if p_init is None:
@@ -193,7 +191,11 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 		# read in betas from gwas file
 		z_b = z_list[b]
 		M_b = len(z_list[b])
-		sd = math.sqrt(H_snp)
+
+		if non_inf_var:
+			sd = math.sqrt(H_gw/float(p_t*M_b))
+		else:
+			sd = math.sqrt(H_snp)
 
 		# save old value to see see if accepted/rejected
 		p_old = p_t
@@ -220,7 +222,7 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 		mu_b = np.zeros(M_b)
 
 		V_half = np.loadtxt(ld_half_flist[b])
-		sigma_g = H_snp
+
 		sigma_e = (1-H_gw)/float(N)
 
 		gamma_old = gamma_t_list[b]
@@ -248,6 +250,10 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 
 		psi_list.append(psi_b)
 
+		if non_inf_var: # update sigma_g with new p value
+			sigma_g = H_gw/float(p_t*M_b)
+		else:
+			sigma_g = H_snp
 
 		logging.info("Long calculation for initialization")
         for m in range(0, M_b):
@@ -298,6 +304,10 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 			# draw c_m
 			c_m = st.bernoulli.rvs(d_m)
 
+			if c_m == -1:
+				print("ERROR, -1")
+				exit(1)
+
 			# draw gamma_m
 			if c_m == 0:
 				gamma_m = 0
@@ -315,20 +325,22 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 			c_t_list[b][m] = c_m
 
 			# change delta values
-			delta_gamma_list[b][m] = gamma_m - gamma_m_old
-			delta_c_list[b][m] = c_m - c_m_old
+			#delta_gamma_list[b][m] = gamma_m - gamma_m_old
+			#delta_c_list[b][m] = c_m - c_m_old
 
         mu_list.append(mu_b)
 
 	p_t = draw_p_ivar_gw(c_t_list)
-	#print "Sampled c"
-	#print(c_old)
-	#print "Sampled gamma"
-	#print(gamma_old)
+
 	p_list.append(p_t)
-	print "Iteration %d: p(t) - %.4f" % (0, p_t)
-	#print "Delta c"
-	#print(delta_c_list)
+
+	log_like_t = log_like(z_list, gamma_t_list, c_t_list, sigma_e, ld_half_flist)
+	# keep running total of log likelihood
+	log_like_list.append(log_like_t)
+
+	# print debugging-info
+	if i <= 10 or i % 10 == 0:
+		print("Iteration %d: sampled p: %.4f, log-like: %4g") % (i, p_t, log_like_t)
 
 	# end loop through blocks
 
@@ -342,7 +354,6 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 
 			z_b = z_list[b]
 			M_b = len(z_list[b])
-			sd = math.sqrt(H_snp)
 
 			# read in ld directly from file
 			V_half_b = np.loadtxt(ld_half_flist[b])
@@ -351,7 +362,6 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 			gamma_t_b = gamma_t_list[b]
 			c_t_b = c_t_list[b]
 
-			sigma_g_b = H_snp
 			sigma_e_b = (1 - H_gw) / N
 
 			# sample causal vector and effects for  block b
@@ -364,7 +374,7 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 			#logging.info("Sampling c and gamma")
 			a_matrix = a_matrix_list[b]
 			psi = psi_list[b]
-			c_t_b, gamma_t_b, mu_b, delta_c_b, delta_gamma_b = draw_c_gamma_dp(c_t_b, gamma_t_b, p_t, sigma_g_b, sigma_e_b, a_matrix, psi, V_half, z_b, delta_mu_b, delta_c_b, delta_gamma_b)
+			c_t_b, gamma_t_b, mu_b, delta_c_b, delta_gamma_b = draw_c_gamma_dp(c_t_b, gamma_t_b, p_t, sigma_g, sigma_e_b, a_matrix, psi, V_half, z_b, delta_mu_b, delta_c_b, delta_gamma_b)
 
 			# update running deltas
 			mu_list[b] = mu_b
@@ -387,14 +397,36 @@ def gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_
 		# end loop over blocks
 		p_t = draw_p_ivar_gw(c_t_list)
 
+		if non_inf_var: # update sigma_g with new p value
+			sigma_g = H_gw/float(p_t*M_b)
+		else:
+			sigma_g = H_snp
+
         # add p_t to list
 		p_list.append(p_t)
 		if i <= 10 or i % 10 == 0:
-			print "Iteration %d: p(t) - %.4f" % (i, p_t)
+			print("Iteration %d: sampled p: %.4f, sigma_g: %.4g, log-like: %4g") % (i, p_t, sigma_g, log_like_t)
 
     # end loop iterations
 	start = int(its*burn)
 	p_est = np.mean(p_list[start: ])
 	p_var = np.var(p_list[start: ])
 
-	return p_est, p_var, p_list
+	avg_log_like = np.mean(log_like_list[start:])
+	var_log_like = np.var(log_like_list[start:])
+
+	return p_est, p_var, p_list, avg_log_like, var_log_like
+
+
+def log_like(z_list, gamma_t_list, c_t_list, sigma_e, V_half_flist):
+    total_log_like = 0
+
+    for z, gamma_t, c_t, V_half_fname in zip(z_list, gamma_t_list, c_t_list, V_half_flist):
+        V_half = np.loadtxt(V_half_fname)
+        M = len(z)
+        mu = np.matmul(V_half, np.multiply(gamma_t, c_t))
+        cov = np.eye(M)*sigma_e
+        log_like = st.multivariate_normal.logpdf(z, mu, cov)
+        total_log_like += log_like
+
+    return total_log_like

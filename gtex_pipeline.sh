@@ -3,12 +3,12 @@
 #$ -cwd
 #$ -j y
 #$ -l h_data=6G,h_rt=5:00:00,highp
-#$ -o Whole_Blood_noninfvar.log
+#$ -o Whole_Blood.log
 #$ -t 1-85:1
 
 # number of tasks for number of genes 
 
-SGE_TASK_ID=2
+#SGE_TASK_ID=2
 
 source /u/local/Modules/default/init/modules.sh
 module load python/2.7
@@ -44,6 +44,8 @@ echo "Outputing results to directory: "$OUTDIR
 
 echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
 
+# make outdir if not already 
+mkdir -p $OUTDIR 
 
     for line in `cat $GENE_LIST`
     do
@@ -119,4 +121,4 @@ echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
 
 fi # end SGE if-statement 
 
-done # end loop through genes 
+done # end loop through genes
