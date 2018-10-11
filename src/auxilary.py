@@ -23,6 +23,9 @@ beta_lam = 0.20 # prior for proportion p, p ~ Beta(beta_lam, beta_lam)
 sigma_prior_a = 1
 sigma_prior_b = 2
 
+alpha_0=1
+beta_0=2
+
 # global constants used to check for under/overflow
 LOG_MIN = 1.7976931348623157e-308
 LOG_MAX = 1.7976931348623157e+308
@@ -70,7 +73,7 @@ def trace_plot(param_list, truth=None, filename=None, title=None):
 # plots histogram
 def hist_plot(param_list, truth=None, filename=None):
     ITS = len(param_list)
-    exit(1) 
+    exit(1)
     #fig = plt.figure()
     #ax = plt.subplot(111)
 
@@ -131,7 +134,7 @@ def summarize_gamma(gamma_true, gamma_est, graph='n'):
 #        plt.title("True gamma vs. Est Gamma - corr: %.2f" % gamma_corr)
 #        plt.ylim((-.20, .20))
 #        plt.xlim((-.20, .20))
-  
+
 
         #fig.savefig('/Users/ruthiejohnson/Desktop/stan/fig.gamma_corr.png')
 
