@@ -5,6 +5,9 @@ import pandas as pd
 import logging
 from scipy.optimize import minimize
 from unity_v3_dp import gibbs_ivar_gw_dp
+import cProfile, pstats, StringIO
+
+PROFILE=False
 
 # global logging
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
@@ -130,6 +133,7 @@ def main():
     parser.add_option("--outdir", dest="outdir")
     parser.add_option("--dp", dest="DP", default='y')
     parser.add_option("--non_inf_var", default='n')
+    parser.add_option("--profile", default='n')
     (options, args) = parser.parse_args()
 
     # set seed
@@ -151,6 +155,11 @@ def main():
     else:
         non_inf_var = True
         logging.info("NOTE: Using  non-infinitesimal variance paramerization")
+
+    profile = options.profile
+    if profile == 'y':
+        global PROFILE
+        PROFILE = True
 
     # get filenames for gwas and ld (assumes full path is given)
     gwas_flist = [gwas_file]
@@ -190,6 +199,10 @@ def main():
 
     gamma_init_list = None
 
+    if PROFILE:
+        pr = cProfile.Profile()
+        pr.enable()
+
     if DP == 'n':
         p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
     else:
@@ -199,6 +212,16 @@ def main():
     # log results to log file
     outfile = join(outdir, id +'.' + str(seed) + ".unity_v3.log")
     f = open(outfile, 'w')
+
+    if PROFILE:
+        pr.disable()
+        s = StringIO.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print s.getvalue()
+        print_func(s.getvalue(), f)
+
 
     print_func("Estimate p: %.4f" % p_est, f)
 

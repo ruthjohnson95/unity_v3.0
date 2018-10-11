@@ -48,7 +48,7 @@ do
 	python scripts/half_ld.py --ld_file $LD_FILE  --ld_out $LD_HALF_FILE
 	
         # run inference 
-	ITS=200
+	ITS=20
 	python src/unity_v3_block.py --seed $SEED --H_snp $H_SNP  --H_gwas $H_GWAS  --N $N --id $SIM_NAME --its $ITS --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --non_inf_var 'n' --dp 'y' 
 
       fi 
