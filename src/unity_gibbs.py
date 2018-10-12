@@ -244,10 +244,120 @@ def gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=None, c_init_lis
 
 
 
-def gibbs_full(z_list, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000):
+def gibbs_full(z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000):
 
-    return p_est, p_var, p_list, avg_log_like, var_log_like
+    # lists to hold esimtates
+    p_list = []
+    sigma_g_list = []
+    sigma_e_list = []
+    log_like_list = []
 
+    # lists to hold latent params
+    gamma_t_list = []
+    c_t_list = []
+
+    B = len(z_list)
+
+    ####################################
+    ##          INITIALIZATION        ##
+    ####################################
+
+    # initialize p
+    if p_init is None:
+        p_t = st.beta.rvs(.2, .2)
+    else:
+        p_t= p_init
+
+    p_list.append(p_t)
+
+    # initialize sigma_g
+    z_arr = np.hstack(np.asarray(z_list))
+    sigma_g_t = np.var(np.abs(z_arr))
+    sigma_g_list.append(sigma_g_t)
+
+    # initialize sigma
+    sigma_e_t = (1-sigma_g_t) / float(N)
+    sigma_e_list.append(sigma_e_t)
+
+    # initialize c and gamma
+    for b in range(0, B):
+
+        # read in betas from gwas file
+        z_b = z_list[b]
+        M_b = len(z_list[b])
+
+        sd = math.sqrt(sigma_g_t)
+
+        if gamma_init_list is None:
+            gamma_t_b = st.norm.rvs(loc=0, scale=sd, size=M_b)
+        else:
+            gamma_t_b = list(np.multiply(gamma_init_list[b], c_init_list[b]))
+
+        if c_init_list is None:
+            c_t_b = st.bernoulli.rvs(p=p_old, size=M_b)
+        else:
+            c_t_b = list(c_init_list[b])
+
+        # build list of blocks for next iteration
+        gamma_t_list.append(gamma_t_b)
+        c_t_list.append(c_t_b)
+
+    ####################################
+    ##            INFERENCE           ##
+    ####################################
+
+    for i in range(0, its):
+        for b in range(0, B):
+
+            # get params for block b
+            z_b = z_list[b]
+            M_b = len(z_b)
+            V_half_b = np.loadtxt(ld_half_flist[b])
+
+            # get values from previous iteration
+            gamma_t_b = gamma_t_list[b]
+            c_t_b = c_t_list[b]
+
+            # sample c, gamma
+            c_t_b, gamma_t_b = draw_c_gamma(c_t_b, gamma_t_b, p_t, sigma_g_t, sigma_e_t, V_half_b, z_b)
+
+            # replace after sample
+            gamma_t_list[b] = gamma_t_b
+            c_t_list[b] = c_t_b
+
+        # sample global params
+
+        # sample p
+        p_t = draw_p_ivar_gw(c_t_list)
+        p_list.append(p_t)
+
+        # sample sigma_g
+        sigma_g_t = draw_sigma_g(gamma_t_list, c_t_list)
+        sigma_g_list.append(sigma_g_t)
+
+        # sample sigma_e
+        sigma_e_t = draw_sigma_e(z_list, gamma_t_list, c_t_list)
+        sigma_e_list.append(sigma_e_t)
+
+        # calculate likelihood
+        log_like_t = log_like(z_list, gamma_t_list, c_t_list, sigma_e_t, ld_half_flist)
+
+        # print debugging-info
+        if i <= 10 or i % 10 == 0:
+            print("Iteration %d: p: %.4f, sigma_g: %.4g, sigma_e: %.4g, log-like: %4g") % (i, p_t, sigma_g_t, sigma_e_t, log_like_t)
+
+    # compute averages
+    start = int(its*burn)
+    p_est = np.mean(p_list[start: ])
+    p_var = np.var(p_list[start: ])
+    sigma_g_est = np.mean(sigma_g_list[start:])
+    sigma_g_var = np.var(sigma_g_list[start:])
+    sigma_e_est = np.mean(sigma_e_list[start:])
+    sigma_e_var = np.var(sigma_e_list[start:])
+    avg_log_like = np.mean(log_like_list[start:])
+    var_log_like = np.var(log_like_list[start:])
+
+    return p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like
 
 
 def draw_p_ivar_gw(c_t_list):
@@ -267,16 +377,36 @@ def draw_p_ivar_gw(c_t_list):
 
 
 def draw_sigma_g(gamma_t_list, c_t_list):
+    c_t_arr = np.hstack(np.asarray(c_t_list))
+    M_c = np.sum(c_t_arr)
+    alpha_g = alpha_0 + (0.50)*M_c
 
-    
+    gamma_t_arr = np.hstack(np.asarray(gamma_t_list))
+    gamma_square_sum = np.sum(np.square(gamma_t_arr))
+    beta_g = beta_0 + (0.50)*gamma_square_sum
+
+    sigma_g_t = st.invgamma.rvs(a=alpha_g, scale=beta_g)
+
+    return sigma_g_t
 
 
-    return
+def draw_sigma_e(z_list, gamma_t_list, c_t_list):
+    c_t_arr = np.hstack(np.asarray(c_t_list))
+    gamma_t_arr = np.hstack(np.asarray(gamma_t_list))
+    z_arr = np.hstack(np.asarray(z_list))
+    M_gw = len(c_t_arr)
+    alpha_e = alpha_0 + (0.50)*M_gw
 
+    gamma_sum = 0
+    nonzero_inds = np.nonzero(c_t_arr)[0]
+	for i in nonzero_inds:
+        gamma_sum += (z_arr[i] - gamma_t_arr[i]) * (z_arr[i] - gamma_t_arr[i])
 
-def draw_sigma_e():
+    beta_e = beta_0 + (0.50)*gamma_sum
 
-    return
+    sigma_e_t = st.invgamma(a=alpha_e, scale=beta_e)
+
+    return sigma_e_t
 
 
 def log_like(z_list, gamma_t_list, c_t_list, sigma_e, V_half_flist):

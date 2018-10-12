@@ -134,6 +134,7 @@ def main():
     parser.add_option("--dp", dest="DP", default='y')
     parser.add_option("--non_inf_var", default='n')
     parser.add_option("--profile", default='n')
+    parser.add_option("--full", dest="full", default='n')
     (options, args) = parser.parse_args()
 
     # set seed
@@ -149,12 +150,18 @@ def main():
     gwas_file = options.gwas_file
     outdir = options.outdir
     DP = options.DP
+    full = options.full
     non_inf_var = options.non_inf_var
     if non_inf_var == 'n':
         non_inf_var = False
     else:
         non_inf_var = True
         logging.info("NOTE: Using  non-infinitesimal variance paramerization")
+
+    if full == 'y':
+        FULL = True
+    else:
+        FULL = False
 
     profile = options.profile
     if profile == 'y':
@@ -183,31 +190,36 @@ def main():
     logging.info("Initializing MCMC with starting value: p=%.4g" % p_init)
 
     # run experiment
-    H_snp = options.H_snp
-    if H_snp is None:
-        # calculate H_snp from H_gwas and M
-        logging.info("User did not provide H_snp...calculating as H_gwas/M")
-        if non_inf_var:
-            H_snp = H/float(M_gw * p_init)
+    if FULL:
+        logging.info("Using FULL model.")
+        p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like = gibbs_full(z_list, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS)
+    else:
+        H_snp = options.H_snp
+        if H_snp is None:
+            # calculate H_snp from H_gwas and M
+            logging.info("User did not provide H_snp...calculating as H_gwas/M")
+            if non_inf_var:
+                H_snp = H/float(M_gw * p_init)
+            else:
+                H_snp = H/float(M_gw)
         else:
-            H_snp = H/float(M_gw)
-    else:
-        H_snp = float(H_snp)
+            H_snp = float(H_snp)
 
-    # genomewide heritability
-    H_gw = H
+        # genomewide heritability
+        H_gw = H
 
-    gamma_init_list = None
+        gamma_init_list = None
 
-    if PROFILE:
-        pr = cProfile.Profile()
-        pr.enable()
+        if PROFILE:
+            pr = cProfile.Profile()
+            pr.enable()
 
-    if DP == 'n':
-        p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
-    else:
-        logging.info("Using DP speedup")
-        p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
+        if DP == 'n':
+            p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
+        else:
+            logging.info("Using DP speedup")
+            p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
+
 
     # log results to log file
     outfile = join(outdir, id +'.' + str(seed) + ".unity_v3.log")
@@ -222,15 +234,20 @@ def main():
         print s.getvalue()
         print_func(s.getvalue(), f)
 
-
     print_func("Estimate p: %.4f" % p_est, f)
 
     print_func("SD p: %.4g" % math.sqrt(p_var), f)
 
     print_func("Avg log like: %.6g" % avg_log_like, f)
 
-    print_func("SD log like: %.4g" % math.sqrt(var_log_like), f)
+    print_func("Var log like: %.4g" % math.sqrt(var_log_like), f)
 
+    if FULL:
+        print_func("Estimate sigma_g: %.4g" % sigma_g_est, f)
+        print_func("SD sigma_g: %.4g" % np.sqrt(sigma_g_var), f)
+
+        print_func("Estimate sigma_e: %.4g" % sigma_g_est, f)
+        print_func("SD sigma_e: %.4g" % np.sqrt(sigma_g_var), f)
 
     f.close()
 
