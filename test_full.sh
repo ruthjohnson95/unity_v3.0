@@ -7,8 +7,8 @@
 
 SGE_TASK_ID=1
 
-source /u/local/Modules/default/init/modules.sh
-module load python/2.7
+#source /u/local/Modules/default/init/modules.sh
+#module load python/2.7
 
 for i in {1..100}
 do
@@ -20,21 +20,23 @@ do
 
         # parse simulation parameters from input file 
 	SIM_NAME="test_model"
-	SIGMA_G=0.01
-	SIGMA_E=9.499999999999999e-06
-	N=100000
-	P_SIM=0.01
-	OUTDIR=/u/home/r/ruthjohn/ruthjohn/unity_v3.0/results
+	SIGMA_G=0.001
+	SIGMA_E=9.499999999999999e-04
+	N=1000
+	P_SIM=0.05
+	#OUTDIR=/u/home/r/ruthjohn/ruthjohn/unity_v3.0/results
+	OUTDIR=/Users/ruthiejohnson/Development/unity_v3.0/results
 	SEED=$SGE_TASK_ID
 	# use identity LD 
-	LD_FILE=/u/home/r/ruthjohn/ruthjohn/unity_v3.0/misc/identity_372.ld
+	LD_FILE=/Users/ruthiejohnson/Development/unity_v3.0/misc/GTEx.Whole_Blood.ENSG00000002549.8.LAP3.ld 
+	#LD_FILE=/u/home/r/ruthjohn/ruthjohn/unity_v3.0/misc/identity_372.ld
 
         # make simulation dir 
 	OUTDIR=${OUTDIR}/${SIM_NAME}
 	mkdir -p $OUTDIR
 
         # generate sample gwas 
-	python scripts/simulate_full.py --sim_name $SIM_NAME --h_snp $H_SNP --h_gwas $H_GWAS --p_sim $P_SIM --N $N  --seed $SEED --ld_file $LD_FILE --outdir $OUTDIR
+	python scripts/simulate_full.py --sim_name $SIM_NAME --sigma_g $SIGMA_G --sigma_e $SIGMA_E --p_sim $P_SIM   --seed $SEED --ld_file $LD_FILE --outdir $OUTDIR
 
         # transform betas 
 	GWAS_FILE=${OUTDIR}/chr$SEED.0.0.gwas
@@ -47,7 +49,7 @@ do
 	python scripts/half_ld.py --ld_file $LD_FILE  --ld_out $LD_HALF_FILE
 	
         # run inference 
-	ITS=20
+	ITS=200
 	python src/unity_v3_block.py --seed $SEED  --N $N --id $SIM_NAME --its $ITS --ld_half_file $LD_HALF_FILE --gwas_file $GWAS_FILE  --outdir $OUTDIR --non_inf_var 'n' --dp 'y' --full 'y' 
 
       fi 

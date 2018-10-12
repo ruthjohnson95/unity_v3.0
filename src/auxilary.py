@@ -23,8 +23,11 @@ beta_lam = 0.20 # prior for proportion p, p ~ Beta(beta_lam, beta_lam)
 sigma_prior_a = 1
 sigma_prior_b = 2
 
-alpha_0=1
-beta_0=2
+alpha_e0=10
+beta_e0=.001
+
+alpha_g0=10
+beta_g0=.1
 
 # global constants used to check for under/overflow
 LOG_MIN = 1.7976931348623157e-308

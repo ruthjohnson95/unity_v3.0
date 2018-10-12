@@ -87,7 +87,11 @@ def draw_c_gamma(c_old, gamma_old, p_old, sigma_g, sigma_e, V_half, z):
         mu_list.append(mu_m)
 
         # calculate params for posterior of c, where P(c|.) ~ Bern(d_m)
-        var_term = math.sqrt(sigma_m/float(sigma_g))
+        try:
+            var_term = math.sqrt(sigma_m/float(sigma_g))
+        except:
+            print sigma_m
+            print sigma_g
 
         a = 0.50 * 1 / (float(sigma_m)) * mu_m * mu_m
 
@@ -272,7 +276,10 @@ def gibbs_full(z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma_in
 
     # initialize sigma_g
     z_arr = np.hstack(np.asarray(z_list))
+
     sigma_g_t = np.var(np.abs(z_arr))
+    # Fixed initalization
+    #sigma_g_t = 0.01
     sigma_g_list.append(sigma_g_t)
 
     # initialize sigma
@@ -341,6 +348,7 @@ def gibbs_full(z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma_in
 
         # calculate likelihood
         log_like_t = log_like(z_list, gamma_t_list, c_t_list, sigma_e_t, ld_half_flist)
+        log_like_list.append(log_like_t)
 
         # print debugging-info
         if i <= 10 or i % 10 == 0:
@@ -379,11 +387,11 @@ def draw_p_ivar_gw(c_t_list):
 def draw_sigma_g(gamma_t_list, c_t_list):
     c_t_arr = np.hstack(np.asarray(c_t_list))
     M_c = np.sum(c_t_arr)
-    alpha_g = alpha_0 + (0.50)*M_c
+    alpha_g = alpha_g0 + (0.50)*M_c
 
     gamma_t_arr = np.hstack(np.asarray(gamma_t_list))
     gamma_square_sum = np.sum(np.square(gamma_t_arr))
-    beta_g = beta_0 + (0.50)*gamma_square_sum
+    beta_g = beta_g0 + (0.50)*gamma_square_sum
 
     sigma_g_t = st.invgamma.rvs(a=alpha_g, scale=beta_g)
 
@@ -395,16 +403,16 @@ def draw_sigma_e(z_list, gamma_t_list, c_t_list):
     gamma_t_arr = np.hstack(np.asarray(gamma_t_list))
     z_arr = np.hstack(np.asarray(z_list))
     M_gw = len(c_t_arr)
-    alpha_e = alpha_0 + (0.50)*M_gw
+    alpha_e = alpha_e0 + (0.50)*M_gw
 
     gamma_sum = 0
     nonzero_inds = np.nonzero(c_t_arr)[0]
-	for i in nonzero_inds:
+    for i in nonzero_inds:
         gamma_sum += (z_arr[i] - gamma_t_arr[i]) * (z_arr[i] - gamma_t_arr[i])
 
-    beta_e = beta_0 + (0.50)*gamma_sum
+    beta_e = beta_e0 + (0.50)*gamma_sum
 
-    sigma_e_t = st.invgamma(a=alpha_e, scale=beta_e)
+    sigma_e_t = st.invgamma.rvs(a=alpha_e, scale=beta_e)
 
     return sigma_e_t
 

@@ -135,28 +135,18 @@ def main():
     parser.add_option("--non_inf_var", default='n')
     parser.add_option("--profile", default='n')
     parser.add_option("--full", dest="full", default='n')
+
     (options, args) = parser.parse_args()
 
     # set seed
     seed = int(options.seed)
     np.random.seed(seed)
 
-    # get experiment params
-    H = float(options.H_gwas)
-    N = int(options.N)
-    ITS = int(options.its)
-    id = options.id
-    ld_half_file = options.ld_half_file
-    gwas_file = options.gwas_file
-    outdir = options.outdir
+    # get model settings
     DP = options.DP
     full = options.full
     non_inf_var = options.non_inf_var
-    if non_inf_var == 'n':
-        non_inf_var = False
-    else:
-        non_inf_var = True
-        logging.info("NOTE: Using  non-infinitesimal variance paramerization")
+    N = int(options.N)
 
     if full == 'y':
         FULL = True
@@ -167,6 +157,24 @@ def main():
     if profile == 'y':
         global PROFILE
         PROFILE = True
+
+    # get experiment params
+    if not FULL:
+        H = float(options.H_gwas)
+        # genomewide heritability
+        H_gw = H
+
+    ITS = int(options.its)
+    id = options.id
+    ld_half_file = options.ld_half_file
+    gwas_file = options.gwas_file
+    outdir = options.outdir
+
+    if non_inf_var == 'n':
+        non_inf_var = False
+    else:
+        non_inf_var = True
+        logging.info("NOTE: Using  non-infinitesimal variance paramerization")
 
     # get filenames for gwas and ld (assumes full path is given)
     gwas_flist = [gwas_file]
@@ -191,7 +199,8 @@ def main():
 
     # run experiment
     if FULL:
-        logging.info("Using FULL model.")
+        logging.info("Using FULL model")
+        gamma_init_list = None
         p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like = gibbs_full(z_list, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS)
     else:
         H_snp = options.H_snp
@@ -204,9 +213,6 @@ def main():
                 H_snp = H/float(M_gw)
         else:
             H_snp = float(H_snp)
-
-        # genomewide heritability
-        H_gw = H
 
         gamma_init_list = None
 
@@ -234,6 +240,7 @@ def main():
         print s.getvalue()
         print_func(s.getvalue(), f)
 
+
     print_func("Estimate p: %.4f" % p_est, f)
 
     print_func("SD p: %.4g" % math.sqrt(p_var), f)
@@ -246,8 +253,8 @@ def main():
         print_func("Estimate sigma_g: %.4g" % sigma_g_est, f)
         print_func("SD sigma_g: %.4g" % np.sqrt(sigma_g_var), f)
 
-        print_func("Estimate sigma_e: %.4g" % sigma_g_est, f)
-        print_func("SD sigma_e: %.4g" % np.sqrt(sigma_g_var), f)
+        print_func("Estimate sigma_e: %.4g" % sigma_e_est, f)
+        print_func("SD sigma_e: %.4g" % np.sqrt(sigma_e_var), f)
 
     f.close()
 
