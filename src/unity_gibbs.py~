@@ -415,8 +415,8 @@ def gibbs_full(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma
     ####################################
     ##            INFERENCE           ##
     ####################################
-    #pr = cProfile.Profile()
-    #pr.enable()
+    pr = cProfile.Profile()
+    pr.enable()
 
     for i in range(0, its):
         for b in range(0, B):
@@ -459,7 +459,6 @@ def gibbs_full(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma
         if i <= 10 or i % 10 == 0:
             print("Iteration %d: p: %.4f, sigma_g: %.4g, sigma_e: %.4g, log-like: %4g") % (i, p_t, sigma_g_t, sigma_e_t, log_like_t)
             sys.stdout.flush()
-            print_func("Iteration %d: p: %.4f, sigma_g: %.4g, sigma_e: %.4g, log-like: %4g") % (i, p_t, sigma_g_t, sigma_e_t, log_like_t, f)
 
     # compute averages
     start = int(its*burn)
@@ -472,13 +471,13 @@ def gibbs_full(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma
     avg_log_like = np.mean(log_like_list[start:])
     var_log_like = np.var(log_like_list[start:])
     
-    #pr.disable()
-    #s = StringIO.StringIO()
-    #sortby = 'cumulative'
-    #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    #ps.print_stats()
-    #print s.getvalue()
-    #print_func(s.getvalue(), f)
+    pr.disable()
+    s = StringIO.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print s.getvalue()
+    print_func(s.getvalue(), f)
 
     return p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like
 

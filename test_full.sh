@@ -16,16 +16,16 @@ do
     if [[ $COUNTER -eq $SGE_TASK_ID ]]
     then
 
-	sim_yaml=$1
+#	sim_yaml=$1
 
         # parse simulation parameters from input file 
 	SIM_NAME="test_model"
 	SIGMA_G=0.001
 	SIGMA_E=9.499999999999999e-04
 	N=1000
-	P_SIM=0.05
-	#OUTDIR=/u/home/r/ruthjohn/ruthjohn/unity_v3.0/results
-	OUTDIR=/Users/ruthiejohnson/Development/unity_v3.0/results
+	P_SIM=0.01
+	OUTDIR=/u/home/r/ruthjohn/ruthjohn/unity_v3.0/results
+	#OUTDIR=/Users/ruthiejohnson/Development/unity_v3.0/results
 	SEED=$SGE_TASK_ID
 	# use identity LD 
 	LD_FILE=/Users/ruthiejohnson/Development/unity_v3.0/misc/GTEx.Whole_Blood.ENSG00000002549.8.LAP3.ld 

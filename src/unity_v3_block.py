@@ -131,7 +131,7 @@ def main():
     parser.add_option("--ld_half_file", dest="ld_half_file")
     parser.add_option("--gwas_file", dest="gwas_file")
     parser.add_option("--outdir", dest="outdir")
-    parser.add_option("--dp", dest="DP", default='y')
+    parser.add_option("--dp", dest="DP", default='n')
     parser.add_option("--non_inf_var", default='n')
     parser.add_option("--profile", default='n')
     parser.add_option("--full", dest="full", default='n')
@@ -196,12 +196,28 @@ def main():
     logging.info("Estimating start of chain with zscore cutoff.")
     p_init, c_init_list = smart_start(z_list, N)
     logging.info("Initializing MCMC with starting value: p=%.4g" % p_init)
+    
+    """
+    if PROFILE:
+        pr = cProfile.Profile()
+        pr.enable()
+    """
+
+    outfile = join(outdir, id +'.' + str(seed) + ".unity_v3.log")
+    f = open(outfile, 'w')
 
     # run experiment
     if FULL:
         logging.info("Using FULL model")
         gamma_init_list = None
-        p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like = gibbs_full(z_list, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS)
+        if DP == 'y':
+            logging.info("DP SPEEDUP")
+            p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like = gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, DP=DP)
+        elif DP == 'n':
+            logging.info("SLOW VERSION")
+            p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like = gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, DP=DP)
+        else:
+            exit(1)
     else:
         H_snp = options.H_snp
         if H_snp is None:
@@ -216,21 +232,24 @@ def main():
 
         gamma_init_list = None
 
-        if PROFILE:
-            pr = cProfile.Profile()
-            pr.enable()
+        #if PROFILE:
+        #    pr = cProfile.Profile()
+        #    pr.enable()
 
         if DP == 'n':
-            p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
+            print "NOT USING SPEEDUP" 
+            logging.info("NOT USING SPEEDUP")
+            p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var, DP=DP)
         else:
             logging.info("Using DP speedup")
-            p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var)
+            p_est, p_var, p_list, avg_log_like, var_log_like = gibbs_ivar_gw_dp(z_list, H_snp, H_gw, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, non_inf_var=non_inf_var, DP=DP)
 
 
     # log results to log file
-    outfile = join(outdir, id +'.' + str(seed) + ".unity_v3.log")
-    f = open(outfile, 'w')
+    #outfile = join(outdir, id +'.' + str(seed) + ".unity_v3.log")
+    #f = open(outfile, 'w')
 
+    """
     if PROFILE:
         pr.disable()
         s = StringIO.StringIO()
@@ -239,7 +258,7 @@ def main():
         ps.print_stats()
         print s.getvalue()
         print_func(s.getvalue(), f)
-
+    """
 
     print_func("Estimate p: %.4f" % p_est, f)
 

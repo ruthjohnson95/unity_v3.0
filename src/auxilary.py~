@@ -19,17 +19,16 @@ unity_metropolis.py, unity_gibbs.py.
 
 
 # global priors
-beta_lam_1 = .2
-beta_lam_2 = .2
-
+beta_lam_1 = 1 # prior for proportion p, p ~ Beta(beta_lam, beta_lam)
+beta_lam_2 = 10
 sigma_prior_a = 0
 sigma_prior_b = 0
 
-alpha_e0=10
+alpha_e0=0.001 
 beta_e0=0.001
-alpha_g0=10
-beta_g0=0.10
 
+alpha_g0=1
+beta_g0=0.001
 
 # global constants used to check for under/overflow
 LOG_MIN = 1.7976931348623157e-308

@@ -2,3 +2,4 @@ results/*
 simulations/*
 misc/*
 *.log
+yaml_files/*
