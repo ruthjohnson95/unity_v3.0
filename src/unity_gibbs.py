@@ -471,7 +471,7 @@ def gibbs_full(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma
     sigma_e_var = np.var(sigma_e_list[start:])
     avg_log_like = np.mean(log_like_list[start:])
     var_log_like = np.var(log_like_list[start:])
-    
+
     #pr.disable()
     #s = StringIO.StringIO()
     #sortby = 'cumulative'
@@ -483,7 +483,7 @@ def gibbs_full(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma
     return p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like
 
 
-def gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000, DP='y'):
+def gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000, DP='y', H_snp=None):
 
     # lists to hold esimtates
     p_list = []
@@ -545,7 +545,10 @@ def gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, ga
         gamma_t_list.append(gamma_t_b)
         c_t_list.append(c_t_b)
 
-        V_half = np.loadtxt(ld_half_flist[b])
+        try:
+            V_half = np.loadtxt(ld_half_flist[b])
+        except:
+            V_half = np.load(ld_half_flist[b])
 
         # a-matrix initialization
         a_matrix_b = np.empty((M_b, M_b))
@@ -570,23 +573,28 @@ def gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, ga
     ####################################
     ##            INFERENCE           ##
     ####################################
-    
+
     # Assuming B is one block
 
     # get params for block b
     b=0
     z_b = np.asarray(z_list[b])
     M_b = len(z_b)
-    V_half_b = np.loadtxt(ld_half_flist[b])
+    M = M_b
+    try:
+        V_half_b = np.loadtxt(ld_half_flist[b])
+    except:
+        V_half_b = np.load(ld_half_flist[b])
+
     a_matrix = a_matrix_list[b]
     psi = psi_list[b]
     gamma_t_b = np.asarray(gamma_t_list[b])
     c_t_b = np.asarray(c_t_list[b])
 
-    # start profiling 
-    pr = cProfile.Profile()
-    pr.enable()
-    
+    # start profiling
+    #pr = cProfile.Profile()
+    #pr.enable()
+
     for i in range(0, its):
 
         # sample c, gamma
@@ -604,13 +612,20 @@ def gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, ga
         p_t = draw_p_ivar_gw(c_t_b)
         p_list.append(p_t)
 
-        # sample sigma_g
-        sigma_g_t = draw_sigma_g(gamma_t_b, c_t_b)
-        sigma_g_list.append(sigma_g_t)
+        if H_snp is None:
+            # sample sigma_g
+            sigma_g_t = draw_sigma_g(gamma_t_b, c_t_b)
+            sigma_g_list.append(sigma_g_t)
 
-        # sample sigma_e
-        sigma_e_t = draw_sigma_e(z_b, gamma_t_b, c_t_b)
-        sigma_e_list.append(sigma_e_t)
+            # sample sigma_e
+            sigma_e_t = draw_sigma_e(z_b, gamma_t_b, c_t_b)
+            sigma_e_list.append(sigma_e_t)
+        else:
+            sigma_t = H_snp
+            sigma_g_list.append(sigma_g_t)
+
+            h2 = M*p_t*sigma_t
+            sigma_e_t = (1-h2)/float(N)
 
         # calculate likelihood
         log_like_t = log_like(z_list, gamma_t_list, c_t_list, sigma_e_t, ld_half_flist)
@@ -621,14 +636,14 @@ def gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, ga
             print("Iteration %d: p: %.4f, sigma_g: %.4g, sigma_e: %.4g, log-like: %4g") % (i, p_t, sigma_g_t, sigma_e_t, log_like_t)
             sys.stdout.flush()
 
-    # end profile 
-    pr.disable()
-    s = StringIO.StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print s.getvalue()
-    print_func(s.getvalue(), f)
+    # end profile
+    #pr.disable()
+    #s = StringIO.StringIO()
+    #sortby = 'cumulative'
+    #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    #ps.print_stats()
+    #print s.getvalue()
+    #print_func(s.getvalue(), f)
 
     # compute averages
     start = int(its*burn)
@@ -678,7 +693,7 @@ def draw_sigma_e(z_arr, gamma_t_arr, c_t_arr):
     #c_t_arr = np.hstack(np.asarray(c_t_list))
     #gamma_t_arr = np.hstack(np.asarray(gamma_t_list))
     #z_arr = np.hstack(np.asarray(z_list))
-    
+
     M_gw = len(c_t_arr)
     alpha_e = alpha_e0 + (0.50)*M_gw
 
