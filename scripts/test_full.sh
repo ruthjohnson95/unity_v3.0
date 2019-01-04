@@ -36,7 +36,7 @@ do
 
         echo "p_"${P_SIM}"_sigG_"${SIGMA_G}"_N_"${N}"_"${i}
 
-        PREFIX="p_"${P_SIM}"_sigG_"${SIGMA_G}"_N_"${N}"_ld"${LD}
+        PREFIX="p_"${P_SIM}"_sigG_"${SIGMA_G}"_N_"${N}"_ld"_${LD}
         GWAS_FILE=${SIM_DIR}/$PREFIX"_"${i}.gwas
 
         # transform betas

@@ -213,12 +213,10 @@ def main():
         gamma_init_list = None
         if DP == 'y':
             logging.info("DP SPEEDUP")
-            p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like
-                = gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, DP=DP, H_snp=H_snp)
+            p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like = gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, DP=DP, H_snp=H_snp)
         elif DP == 'n':
             logging.info("SLOW VERSION")
-            p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like
-                = gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, DP=DP, H_snp=H_snp)
+            p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like = gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=p_init, c_init_list=c_init_list, gamma_init_list=gamma_init_list, its=ITS, DP=DP, H_snp=H_snp)
         else:
             exit(1)
     else:

@@ -621,10 +621,10 @@ def gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, ga
             sigma_e_t = draw_sigma_e(z_b, gamma_t_b, c_t_b)
             sigma_e_list.append(sigma_e_t)
         else:
-            sigma_t = H_snp
+            sigma_g_t = H_snp
             sigma_g_list.append(sigma_g_t)
 
-            h2 = M*p_t*sigma_t
+            h2 = M*p_t*sigma_g_t
             sigma_e_t = (1-h2)/float(N)
 
         # calculate likelihood
