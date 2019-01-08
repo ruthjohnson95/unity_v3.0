@@ -5,7 +5,7 @@
 #$ -o test_full.log
 #$ -t 1-5400:1
 
-#SGE_TASK_ID=333
+SGE_TASK_ID=333
 
 MASTER_PATH=/u/home/r/ruthjohn/ruthjohn/unity_v3.0
 SCRIPT_DIR=${MASTER_PATH}/scripts
@@ -54,7 +54,7 @@ do
 	fi
 	
         # transform betas
-    	  python ${SCRIPT_DIR}/transform_betas.py --gwas_file $GWAS_FILE --ld_file $LD_FILE
+#    	  python ${SCRIPT_DIR}/transform_betas.py --gwas_file $GWAS_FILE --ld_file $LD_FILE
 
     	  ITS=250
     	  python ${SRC_DIR}/main.py \

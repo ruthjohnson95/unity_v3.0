@@ -2,23 +2,30 @@
 
 MASTER_PATH=/u/home/r/ruthjohn/ruthjohn/unity_v3.0
 SCRIPT_DIR=${MASTER_PATH}/scripts
-PREFIX_PATH=${MASTER_PATH}/misc/prefix.txt
-RESULTS_DIR=${MASTER_PATH}/sim_results_10K
+PREFIX_PATH=${MASTER_PATH}/misc/prefix_short.txt
+RESULTS_DIR=${MASTER_PATH}/sim_results_full
 
-RESULT_FILE=${RESULTS_DIR}/summary_unity_v3_10K.txt
+RESULT_FILE=${RESULTS_DIR}/summary_unity_v3_10K_full.txt
 
-echo "p p_est sigG sigG_est" > $RESULT_FILE
+VARY_H=0
 
-# only look at log files
-for file in `ls -v $RESULTS_DIR/*unity_v3.log`
+echo "p p_est sigG sigG_est N ld varyH" > $RESULT_FILE
+
+while read line
 do
-  
-    P=$(basename $file | cut -d'_' -f2)
-    SigG=$(basename $file | cut -d'_' -f4)
+    P=$(echo $line | cut -d' ' -f1)
+    SigG=$(echo $line | cut -d' ' -f2)
+    N=$(echo $line | cut -d' ' -f3)
+    LD=$(echo $line | cut -d' ' -f4)
 
-    P_EST=$(tail $file | grep "Estimate p:" | cut -d' ' -f3)
-    SIG_G_EST=$(tail $file |grep "Estimate sigma_g" | cut -d' ' -f3)
+    for i in {1..100}
+    do
 
-    echo $P $P_EST $SigG $SIG_G_EST >> $RESULT_FILE
+	file=$RESULTS_DIR/p_${P}_sigG_${SigG}_N_${N}_ld_${LD}.${i}.unity_v3.log
+	P_EST=$(tail $file | grep "Estimate p:" | cut -d' ' -f3)
+	SIG_G_EST=$(tail $file |grep "Estimate sigma_g" | cut -d' ' -f3)
 
-done
+	echo $P $P_EST $SigG $SIG_G_EST $N $LD $VARY_H >> $RESULT_FILE
+
+    done
+done < $PREFIX_PATH

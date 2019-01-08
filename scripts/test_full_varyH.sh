@@ -2,16 +2,16 @@
 #$ -cwd
 #$ -j y
 #$ -l h_data=25G,h_rt=6:00:00,highp
-#$ -o test_full.log
+#$ -o test_full_varyH.log
 #$ -t 1-5400:1
 
-#SGE_TASK_ID=333
+#SGE_TASK_ID=1
 
 MASTER_PATH=/u/home/r/ruthjohn/ruthjohn/unity_v3.0
 SCRIPT_DIR=${MASTER_PATH}/scripts
 SRC_DIR=${MASTER_PATH}/src
 SIM_DIR=${MASTER_PATH}/sims_10K
-SIM_RESULTS_DIR=${MASTER_PATH}/sim_results_full
+SIM_RESULTS_DIR=${MASTER_PATH}/sim_results_full_varyH
 
 PREFIX_PATH=${MASTER_PATH}/misc/prefix.txt
 UKBB_LD=${MASTER_PATH}/misc/chr22.0.0.ld.npy
@@ -54,7 +54,7 @@ do
 	fi
 	
         # transform betas
-    	  python ${SCRIPT_DIR}/transform_betas.py --gwas_file $GWAS_FILE --ld_file $LD_FILE
+#    	  python ${SCRIPT_DIR}/transform_betas.py --gwas_file $GWAS_FILE --ld_file $LD_FILE
 
     	  ITS=250
     	  python ${SRC_DIR}/main.py \
@@ -66,8 +66,7 @@ do
           --gwas_file $GWAS_FILE  \
           --outdir $SIM_RESULTS_DIR \
           --dp 'y' \
-          --full 'y' \
-	  --H_snp $SIGMA_G
+          --full 'y' 
 
       fi
   done
