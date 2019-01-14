@@ -3,11 +3,11 @@
 MASTER_PATH=/u/home/r/ruthjohn/ruthjohn/unity_v3.0
 SCRIPT_DIR=${MASTER_PATH}/scripts
 PREFIX_PATH=${MASTER_PATH}/misc/prefix_short.txt
-RESULTS_DIR=${MASTER_PATH}/sim_results_full
+RESULTS_DIR=${MASTER_PATH}/sim_results_full_varyH
 
 RESULT_FILE=${RESULTS_DIR}/summary_unity_v3_10K_full.txt
 
-VARY_H=0
+VARY_H=1
 
 echo "p p_est sigG sigG_est N ld varyH" > $RESULT_FILE
 

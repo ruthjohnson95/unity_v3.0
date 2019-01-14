@@ -265,8 +265,8 @@ def main():
         print_func("Estimate sigma_g: %.4g" % sigma_g_est, f)
         print_func("SD sigma_g: %.4g" % np.sqrt(sigma_g_var), f)
 
-        print_func("Estimate sigma_e: %.4g" % sigma_e_est, f)
-        print_func("SD sigma_e: %.4g" % np.sqrt(sigma_e_var), f)
+#        print_func("Estimate sigma_e: %.4g" % sigma_e_est, f)
+#        print_func("SD sigma_e: %.4g" % np.sqrt(sigma_e_var), f)
 
     f.close()
 

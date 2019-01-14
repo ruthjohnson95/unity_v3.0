@@ -3,7 +3,7 @@
 #$ -j y
 #$ -l h_data=25G,h_rt=6:00:00,highp
 #$ -o test_full_varyH.log
-#$ -t 1-5400:1
+#$ -t 1-900:1
 
 #SGE_TASK_ID=1
 
@@ -67,6 +67,8 @@ do
           --outdir $SIM_RESULTS_DIR \
           --dp 'y' \
           --full 'y' 
+	  
+	  sleep 300
 
       fi
   done

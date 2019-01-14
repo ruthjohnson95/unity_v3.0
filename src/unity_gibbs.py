@@ -483,7 +483,7 @@ def gibbs_full(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma
     return p_est, p_var, sigma_g_est, sigma_g_var, sigma_e_est, sigma_e_var, avg_log_like, var_log_like
 
 
-def gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000, DP='y', H_snp=None):
+def gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, gamma_init_list=None, its=5000, DP='y', H_snp=None, H_gw=None):
 
     # lists to hold esimtates
     p_list = []
@@ -651,8 +651,10 @@ def gibbs_full_dp(f, z_list, N, ld_half_flist, p_init=None, c_init_list=None, ga
     p_var = np.var(p_list[start: ])
     sigma_g_est = np.mean(sigma_g_list[start:])
     sigma_g_var = np.var(sigma_g_list[start:])
-    sigma_e_est = np.mean(sigma_e_list[start:])
-    sigma_e_var = np.var(sigma_e_list[start:])
+    #sigma_e_est = np.mean(sigma_e_list[start:])
+    #sigma_e_var = np.var(sigma_e_list[start:])
+    sigma_e_est = None
+    sigma_e_var = None 
     avg_log_like = np.mean(log_like_list[start:])
     var_log_like = np.var(log_like_list[start:])
 
