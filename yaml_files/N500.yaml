@@ -1,7 +1,0 @@
-SIM NAME: N500
-H GWAS: 0.05
-P SIM: 0.05
-SAMPLE SIZE: 500
-OUTDIR: results
-H SNP: 0.05
-LD FILE: /u/home/r/ruthjohn/ruthjohn/Gtex_analysis/GTEx.Whole_Blood.ENSG00000024862.12.CCDC28A.ld

@@ -1,7 +1,0 @@
-SIM NAME: N500K
-H GWAS: 0.25
-P SIM: 0.01
-SAMPLE SIZE: 500000
-OUTDIR: results
-H SNP: 0.00005
-LD FILE: /u/home/r/ruthjohn/ruthjohn/unity_v3.0/misc/identity_372.ld
