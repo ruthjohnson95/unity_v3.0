@@ -16,6 +16,7 @@ Describes functions used for sampling from posterior distribution of p.
 Models LD in a full Gibbs sampler.
 
 """
+B = 10
 
 def calc_mu_opt(gamma_old, c_old, z, a_matrix, psi, V_half, sigma_g, sigma_e, m):
 
@@ -487,3 +488,64 @@ def log_like(z_list, gamma_t_list, c_t_list, sigma_e, V_half_flist):
     """
 
     return total_log_like
+
+
+def log_p_pdf(p_t, gamma_t, c_t, H_gw, M_gw):
+    log_p = st.beta.logpdf(p, beta_lam_1, beta_lam_2)
+
+    # find nonzero inds of gamma
+    nonzero_inds = np.nonzero(gamma_t)[0]
+    nonzero_gamma = np.take(gamma_t, nonzero_inds)
+    sd = H_gw/(M_gw * p_t)
+    log_gamma = np.sum(st.norm.logpdf(nonzero_gamma, 0, sd))
+
+    log_c = np.sum(st.bernoulli.logpdf(c_t, p_t))
+
+    log_pdf = log_p + log_gamma + log_c
+
+    return log_pdf
+
+
+def log_q_pdf(p_t):
+    alpha = beta_lam_1*B
+    beta = beta_lam_2*B
+    log_q = st.beta.logpdf(x=p_t, a=alpha, b=beta)
+
+    return log_q
+
+def q_rvs(p):
+    alpha = p+beta_lam_1*B
+    beta = p+beta_lam_2*B
+    q_star = st.beta.rvs(alpha, beta)
+    return q_star
+
+def accept_prob(p_old, p_star, gamma_t, c_t, H_gw, M_gw):
+    log_q_star = log_q_pdf(p_star)
+    log_q_old = log_q_pdf(p_old)
+    log_p_star = log_p_pdf(p_star,gamma_t, c_t, H_gw, M_gw)
+    log_p_old = log_p_pdf(p_old, gamma_t, c_t, H_gw, M_gw)
+
+    r = (log_p_star - log_p_old) + (log_q_old - log_q_star)
+
+    if r < EXP_MAX: # EXP MAX
+        R = math.exp(r)
+    else:
+        R = 100
+
+    accept = min(1, R)
+
+    return accept
+
+
+def sample_p_metropolis(p_t, gamma_t, c_t, H_gw, M_gw):
+    p_old = p_t
+    p_star = q_rvs(p_old)
+    accept = accept_prob(p_old, p_star, gamma_t, c_t, H_gw, M_gw)
+
+    u = st.uniform.rvs(size=1)
+    if u < accept:
+        p_t = p_star
+    else:
+        p_t = p_old
+
+    return p_t

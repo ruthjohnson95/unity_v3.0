@@ -11,7 +11,7 @@ import os
 def main():
 
     parser = OptionParser()
-    parser.add_option("--unity", dest="unity_summary_file", default="/u/home/r/ruthjohn/ruthjohn/unity_v3.0/sim_results_full/summary_unity_v3_10K_full.txt")
+    parser.add_option("--unity", dest="unity_summary_file", default="/u/home/r/ruthjohn/ruthjohn/unity_v3.0/sim_results_10K_h2/summary_unity_v3_10K_full.txt")
     parser.add_option("--outdir", dest="outdir", default="/u/home/r/ruthjohn/ruthjohn/unity_v3.0/scripts")
     (options, args) = parser.parse_args()
 
