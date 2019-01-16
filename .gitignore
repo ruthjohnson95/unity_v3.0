@@ -7,3 +7,4 @@ old_sims/*
 sim*
 scripts/*.pdf
 *tar.gz
+figs/*
