@@ -22,4 +22,4 @@ EXP_MAX = math.log(sys.float_info.max)
 BURN = 0.25
 
 # constant contolling proposal distribution for Metropolis step
-metropolis_factor = .10
+metropolis_factor = 10

@@ -26,6 +26,7 @@ def gibbs_sampler_Hgw(z, H_gw, M_gw, N, V_half, its, f, DP_flag, profile_flag):
     gamma_t_list = []
     c_t_list = []
     log_like_list = []
+    accept_sum = 0
 
     p_t, c_t = smart_start(z, N)
     if p_t == 0:
@@ -75,8 +76,8 @@ def gibbs_sampler_Hgw(z, H_gw, M_gw, N, V_half, its, f, DP_flag, profile_flag):
         ########## Sample p #########
 
         p_t, accept = sample_p_metropolis(p_t, gamma_t, c_t, H_gw, M_gw)
-        print accept
         p_list.append(p_t)
+        accept_sum += accept
 
         ######## Likelihood ########
 
@@ -84,9 +85,9 @@ def gibbs_sampler_Hgw(z, H_gw, M_gw, N, V_half, its, f, DP_flag, profile_flag):
         log_like_t = log_like(z, gamma_t, c_t, sigma_e, V_half)
         log_like_list.append(log_like_t)
 
-        if i <= 10 or i % 10 == 0:
+        if i <= 10 or i % 1 == 0:
             # TODO: print accept or not
-            print("Iteration %d: p: %.4f, log-like: %4g") % (i, p_t, log_like_t)
+            print("Iteration %d: , Accept: %d, p: %.4f, log-like: %4g") % (i, accept, p_t, log_like_t)
             sys.stdout.flush() # flush the buffer to print on Hoffman
 
     ####################################
@@ -107,8 +108,9 @@ def gibbs_sampler_Hgw(z, H_gw, M_gw, N, V_half, its, f, DP_flag, profile_flag):
     p_var = np.var(p_list[start:])
     avg_log_like = np.mean(log_like_list[start:])
     var_log_like = np.var(log_like_list[start:])
+    accept_percent = accept_sum/float(its)
 
-    return p_est, p_var, avg_log_like, var_log_like
+    return p_est, p_var, avg_log_like, var_log_like, accept_percent
 
 
 # TODO: add docstrings
@@ -191,7 +193,7 @@ def log_p_pdf(p_t, gamma_t, c_t, H_gw, M_gw):
     # find nonzero inds of gamma
     nonzero_inds = np.nonzero(gamma_t)[0]
     nonzero_gamma = np.take(gamma_t, nonzero_inds)
-    sd = H_gw/(M_gw * p_t)
+    sd = math.sqrt(H_gw/(M_gw * p_t))
     log_gamma = np.sum(st.norm.logpdf(nonzero_gamma, 0, sd))
 
     log_c = np.sum(st.bernoulli.logpmf(c_t, p_t))
@@ -201,10 +203,10 @@ def log_p_pdf(p_t, gamma_t, c_t, H_gw, M_gw):
     return log_pdf
 
 
-def log_q_pdf(p_t):
-    alpha = beta_lam_1 + p_t * metropolis_factor
-    beta = beta_lam_2 + p_t * metropolis_factor
-    log_q = st.beta.logpdf(x=p_t, a=alpha, b=beta)
+def log_q_pdf(p_star, p_old):
+    alpha = beta_lam_1 + p_old * metropolis_factor
+    beta = beta_lam_2 + p_old * metropolis_factor
+    log_q = st.beta.logpdf(x=p_star, a=alpha, b=beta)
 
     return log_q
 
@@ -217,9 +219,9 @@ def q_rvs(p_old):
 
 
 def accept_prob(p_old, p_star, gamma_t, c_t, H_gw, M_gw):
-    log_q_star = log_q_pdf(p_star)
-    log_q_old = log_q_pdf(p_old)
-    log_p_star = log_p_pdf(p_star,gamma_t, c_t, H_gw, M_gw)
+    log_q_star = log_q_pdf(p_star, p_old)
+    log_q_old = log_q_pdf(p_old, p_star)
+    log_p_star = log_p_pdf(p_star, gamma_t, c_t, H_gw, M_gw)
     log_p_old = log_p_pdf(p_old, gamma_t, c_t, H_gw, M_gw)
 
     r = (log_p_star - log_p_old) + (log_q_old - log_q_star)
@@ -237,31 +239,26 @@ def accept_prob(p_old, p_star, gamma_t, c_t, H_gw, M_gw):
 def sample_p_metropolis(p_t, gamma_t, c_t, H_gw, M_gw):
     p_old = p_t
     p_star = q_rvs(p_t)
-    print "p_star: %.4g" % p_star
+
     accept = accept_prob(p_old, p_star, gamma_t, c_t, H_gw, M_gw)
 
     u = st.uniform.rvs(size=1)
     if u < accept:
         p_t = p_star
-        accept_str = "ACCEPT"
+        accept = 1
     else:
         p_t = p_old
-        accept_str = "REJECT"
+        accept = 0
 
-    return p_t, accept_str
+    return p_t, accept
 
 
-def log_like(z_list, gamma_t_list, c_t_list, sigma_e, V_half):
+def log_like(z, gamma_t, c_t, sigma_e, V_half):
+    """
+    M = len(z)
+    mu = np.matmul(V_half, np.multiply(gamma_t, c_t))
+    cov = np.eye(M)*sigma_e
+    total_log_like = st.multivariate_normal.logpdf(z, mu, cov)
+    """
     total_log_like = 0
-
-    """
-    for z, gamma_t, c_t, V_half_fname in zip(z_list, gamma_t_list, c_t_list, V_half_flist):
-        V_half = np.loadtxt(V_half_fname)
-        M = len(z)
-        mu = np.matmul(V_half, np.multiply(gamma_t, c_t))
-        cov = np.eye(M)*sigma_e
-        log_like = st.multivariate_normal.logpdf(z, mu, cov)
-        total_log_like += log_like
-    """
-
     return total_log_like

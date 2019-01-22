@@ -96,9 +96,10 @@ def main():
     gwas = pd.read_table(gwas_file, sep=' ')
     z = np.asarray(gwas['BETA_STD_I'])
 
-    p_est, p_var, avg_log_like, var_log_like = gibbs_sampler_Hgw(z, H_gw, M_gw, N, V_half, its, f,
+    p_est, p_var, avg_log_like, var_log_like, accept_percent = gibbs_sampler_Hgw(z, H_gw, M_gw, N, V_half, its, f,
                                                                  dp_flag, profile_flag)
-
+    accept_percent = accept_percent*100
+    print_func("Accept percent: %.4f" % accept_percent, f)
     print_func("Estimate p: %.4f" % p_est, f)
     print_func("SD p: %.4g" % math.sqrt(p_var), f)
     print_func("Avg log like: %.6g" % avg_log_like, f)

@@ -1,0 +1,91 @@
+#!/usr/bin/env sh
+#$ -cwd
+#$ -j y
+#$ -l h_data=10G,h_rt=6:00:00,highp
+#$ -o run_inference_genesis_kk.log
+#$ -t 1-6400:1
+
+SGE_TASK_ID=1
+
+MASTER_PATH=/u/home/r/ruthjohn/ruthjohn/unity_v3.0
+SCRIPT_DIR=${MASTER_PATH}/scripts
+SRC_DIR=${MASTER_PATH}/src
+SIM_DIR=/u/flashscratch/r/ruthjohn/kathy_kangchen_sims/std_ols
+SIM_RESULTS_DIR=${MASTER_PATH}/sim_results_kk
+
+PREFIX_PATH=${MASTER_PATH}/misc/prefix_kk.txt
+UKBB_LD=${MASTER_PATH}/misc/chr22.0.0.ld.npy
+UKBB_HALF=${MASTER_PATH}/misc/chr22.0.0.half_ld.npy
+UKBB_NEG_HALF=${MASTER_PATH}/misc/chr22.0.0.ld.neg_half_ld.npy
+NO_LD=${MASTER_PATH}/misc/chr22.0.0.identity
+
+source /u/local/Modules/default/init/modules.sh
+module load python/2.7
+module load R/3.5.1
+
+while read line
+do
+
+    CAU_RATIO=$(echo $line | cut -d' ' -f1)
+    HSQ=$(echo $line | cut -d' ' -f2)
+    MAF=$(echo $line | cut -d' ' -f3)
+    ld=$(echo $line | cut -d' ' -f4)
+    MAF_LOW=$(echo $line | cut -d' ' -f5)
+    MAF_HIGH=$(echo $line | cut -d' ' -f6)
+
+    H2=$HSQ
+
+    LD=1
+    N=337205
+    M_GW=9564
+
+    PREFIX=cau_ratio_${CAU_RATIO}_hsq_${HSQ}_maf_${MAF}_ld_${ld}_range_${MAF_LOW}_${MAF_HIGH}
+
+    for i in {1..100}
+    do
+      COUNTER=$((COUNTER+1))
+      if [[ $COUNTER -eq $SGE_TASK_ID ]]
+      then
+	      DATE=`date '+%Y-%m-%d %H:%M:%S'`
+	      echo $DATE" Starting simulation for unity-mixture: "${PREFIX}"_"${i}
+              GWAS_FILE=${SIM_DIR}/${PREFIX}_sim_${i}.std_ols
+
+      	if [ "$LD" -eq "1" ]
+      	then
+      	    LD_FILE=$UKBB_LD
+      	    LD_HALF_FILE=$UKBB_HALF
+	    LD_NEG_HALF_FILE=$UKBB_NEG_HALF
+      	elif [ "$LD" -eq "0" ]
+      	then
+      	    LD_FILE=$NO_LD
+      	    LD_HALF_FILE=$NO_LD
+	    LD_NEG_HALF_FILE=$NO_LD
+      	else
+      	    echo "User argument for LD invalid...exiting"
+      	    exit 1
+      	fi
+
+          # transform betas
+      	  python ${SCRIPT_DIR}/transform_betas.py --gwas_file $GWAS_FILE --ld_neg_half $LD_NEG_HALF_FILE
+
+      	  ITS=250
+	  python ${SRC_DIR}/main_new.py \
+            --seed $i \
+            --N $N \
+            --id $PREFIX \
+            --its $ITS \
+            --ld_half_file $LD_HALF_FILE \
+            --gwas_file $GWAS_FILE  \
+            --outdir $SIM_RESULTS_DIR \
+	    --H_gw $H2 \
+            --M_gw $M_GW \
+	    --dp
+	  
+	  genesis_outfile=$SIM_RESULTS_DIR/$PREFIX.${i}.genesis.log
+	  Rscript $SCRIPT_DIR/genesis.R --gwas_file $GWAS_FILE  > $genesis_outfile
+
+          sleep 300
+
+        fi
+  done
+done < $PREFIX_PATH
