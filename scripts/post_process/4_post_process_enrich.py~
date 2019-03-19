@@ -1,0 +1,225 @@
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import pandas as pd 
+import numpy as np 
+import seaborn as sns
+import os
+
+all_summary_file="/u/home/r/ruthjohn/ruthjohn/unity_v3.0/h2_poly/SUMMARY/ALL.summary.gwas.txt"
+#all_summary_file="/u/home/r/ruthjohn/ruthjohn/unity_v3.0/h2_poly/SUMMARY/ALL.summary.gwas.6mb.txt"
+outfile="/u/home/r/ruthjohn/ruthjohn/unity_v3.0/h2_poly/SUMMARY/ALL.summary.enrich.txt"
+figdir="/u/home/r/ruthjohn/ruthjohn/unity_v3.0/figs"
+
+out_f = open(outfile, 'w')
+out_f.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % ("TRAIT", "BLOCK","SIGN_P", "H2_x2", "H2_x3", "N_HITS", "N_BLOCK_HITS", "U_GWAS_X2", "U_X2", "U_GWAS_X3", "U_X3"))
+
+#out_f.write("%s,%s,%s,%s,%s,%s\n" % ("TRAIT", "M", "H2", "P","M_c", "H2_Mc"))
+df = pd.read_csv(all_summary_file, sep=' ')
+
+# loop through traits 
+trait_list=set(df['TRAIT'])
+trait_list = np.sort(list(trait_list)) 
+
+# overlap dictionaries 
+overlap_dict = {}
+overlap_dict['6mb'] = {'h2_enrich_x2': {}, 'h2_enrich_x3': {}, 'h2_enrich_x15': {}}
+overlap_dict['12mb'] = {'h2_enrich_x2': {}, 'h2_enrich_x3': {}, 'h2_enrich_x15': {}}
+overlap_dict['24mb'] = {'h2_enrich_x2': {}, 'h2_enrich_x3': {}, 'h2_enrich_x15': {}}
+overlap_dict['48mb'] = {'h2_enrich_x2': {}, 'h2_enrich_x3': {}, 'h2_enrich_x15': {}}
+
+
+for trait in trait_list:
+    df_trait = df.loc[df['TRAIT'] == trait]
+
+    # per block
+    #block_list = ['6mb', '12mb', '24mb', '48mb']
+    block_list = ['6mb']
+
+    for block in block_list:
+        df_block = df_trait.loc[df['BLOCK'] == block]
+        M = df_block['M']
+        p = df_block['P_EST']
+        p = np.nan_to_num(p)
+#        p_std = df_block['P_SD']
+#        p_2SE= np.multiply(2, p_std)
+
+        # find where p +- p_2SE < 0
+#        p_interval = np.subtract(p, p_2SE)
+#        sign_p = sum(p_interval > 0)
+        sign_p = 0
+
+#        import pdb; pdb.set_trace()
+
+        # calculate h2 enrich
+        h2 = df_block['H2']
+        p_med = np.median(p)
+        p_var = np.sqrt(np.var(p))
+
+        h2_med = np.median(df_block['H2'])
+        h2_var = np.sqrt(np.var(h2))
+
+        M_med = np.median(M)
+        M_var = np.sqrt(np.var(h2))
+ 
+        Mc = np.multiply(M, p)
+        Mc_med = np.median(Mc)
+        Mc_var = np.sqrt(np.var(Mc))
+
+        h2_Mc = np.divide(h2, Mc)
+        #h2_Mc = h2_Mc[~np.isinf(h2_Mc)]
+        #h2_Mc = np.nan_to_num(h2_Mc)
+        h2_Mc[h2_Mc == np.inf] = 0 
+        h2_Mc[h2_Mc == -1*np.inf] = 0
+        
+        # only do mean of non-zero h2_Mc
+        h2_Mc_nonzero = h2_Mc.values[np.nonzero(h2_Mc.values) ]
+        h2_Mc_mean = np.mean(h2_Mc_nonzero)
+        h2_Mc_var = np.sqrt(np.var(h2_Mc))
+        
+        h2_enrich = np.divide(h2_Mc, h2_Mc_mean)
+        h2_enrich_x15 = sum(h2_enrich >= 1.5)
+        h2_enrich_x2 = sum(h2_enrich >= 2)
+        h2_enrich_x3 = sum(h2_enrich >= 3)
+
+        h2_enrich_x2_arr = (h2_enrich >= 2).astype(int)
+        h2_enrich_x3_arr = (h2_enrich >= 3).astype(int)
+
+        # get num of gwas hits total
+        num_hits = np.sum(df_block['GWAS_HITS'].values)
+        num_block_hits = len(np.nonzero(df_block['GWAS_HITS'].values)[0])
+
+#        import pdb; pdb.set_trace()
+        gwas_bitvector = (df_block['GWAS_HITS'].values > 0).astype(int)
+        uniq_gwas_x2 = sum(gwas_bitvector > h2_enrich_x2_arr)
+        uniq_h2_enrich_x2 = sum(h2_enrich_x2_arr > gwas_bitvector)
+        
+        uniq_gwas_x3 = sum(gwas_bitvector > h2_enrich_x3_arr)
+        uniq_h2_enrich_x3 = sum(h2_enrich_x3_arr > gwas_bitvector)
+
+        
+
+        out_f.write("%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d\n" % (trait, block,sign_p, h2_enrich_x2,h2_enrich_x3,num_hits,num_block_hits,uniq_gwas_x2,uniq_h2_enrich_x2,uniq_gwas_x3,uniq_h2_enrich_x3))
+
+#        import pdb; pdb.set_trace()
+
+        # denote if region is enriched
+        overlap_dict[block]['h2_enrich_x2'][trait] = (h2_enrich >= 2)
+        overlap_dict[block]['h2_enrich_x3'][trait] = (h2_enrich >= 3)
+        overlap_dict[block]['h2_enrich_x15'][trait] = (h2_enrich >= 1.5)
+        
+n_traits = len(trait_list)
+
+overlap_matrix_x2 = {}
+overlap_matrix_x3 = {}
+overlap_matrix_x15 = {} 
+overlap_matrix_x2_x3 = {}
+
+for block in block_list:
+    overlap_matrix_x15[block] = np.zeros((n_traits, n_traits))
+    overlap_matrix_x2[block] = np.zeros((n_traits, n_traits))
+    overlap_matrix_x3[block] = np.zeros((n_traits, n_traits))
+    overlap_matrix_x2_x3[block] = np.zeros((n_traits, n_traits))
+
+max_pairs_list = []
+
+for i, trait1 in enumerate(trait_list):
+    for j, trait2 in enumerate(trait_list):
+        for block in block_list:
+            trait1_bitvector_x2 = overlap_dict[block]['h2_enrich_x2'][trait1]
+            trait2_bitvector_x2 = overlap_dict[block]['h2_enrich_x2'][trait2]
+            overlap_bitvector_x2 = np.multiply(trait1_bitvector_x2, trait2_bitvector_x2)
+
+            trait1_bitvector_x3 = overlap_dict[block]['h2_enrich_x3'][trait1]
+            trait2_bitvector_x3 = overlap_dict[block]['h2_enrich_x3'][trait2]
+            overlap_bitvector_x3 = np.multiply(trait1_bitvector_x3, trait2_bitvector_x3)
+
+            trait1_bitvector_x15 = overlap_dict[block]['h2_enrich_x15'][trait1]
+            trait2_bitvector_x15 = overlap_dict[block]['h2_enrich_x15'][trait2]
+            overlap_bitvector_x15 = np.multiply(trait1_bitvector_x15, trait2_bitvector_x3)
+            
+            if i < j:
+                overlap_matrix_x2_x3[block][j, i] = int(np.sum(overlap_bitvector_x2))
+                overlap_matrix_x2_x3[block][i, j] = int(np.sum(overlap_bitvector_x3))
+                max_pairs_list.append((int(np.sum(overlap_bitvector_x3)), trait1, trait2))
+            elif i == j:
+                overlap_matrix_x2_x3[block][i, i] = int(np.sum(overlap_bitvector_x2))
+
+    #        overlap_matrix_x2[block][i, j]= int(np.sum(overlap_bitvector_x2))
+    #        overlap_matrix_x3[block][i, j]= int(np.sum(overlap_bitvector_x3))
+    #        overlap_matrix_x15[block][i, j]= int(np.sum(overlap_bitvector_x15))
+
+# get top 10 pairs for 3x
+sort_max_pairs_list = sorted(max_pairs_list, key=lambda tup: tup[0], reverse=True)
+for i in range(0, 50):
+    print sort_max_pairs_list[i]
+
+# make heatmap figure
+sns.set(style="white")
+sns.set(font_scale=.8)
+
+for block in block_list:
+    total_blocks = len(overlap_dict[block]['h2_enrich_x15']['bmi'])
+
+    heatmap_df = pd.DataFrame(overlap_matrix_x2_x3[block], index=trait_list, columns=trait_list)
+#    mask = np.zeros_like(heatmap_df, dtype=np.bool)
+#    mask[np.triu_indices_from(mask)] = True    
+    cmap = "YlOrRd"
+    
+    fig, ax = plt.subplots()
+#    plt.subplots(figsize=(20,20))
+#    sns.heatmap(heatmap_df, mask=mask, cmap=cmap, vmin=0, square=True, linewidths=.5, cbar_kws={"shrink": .5})
+    sns.heatmap(heatmap_df, cmap=cmap, vmin=0, square=True, linewidths=.5, cbar_kws={"shrink": .5})
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+         rotation_mode="anchor")
+    fig.tight_layout()
+    plt.savefig(os.path.join(figdir, "heatmap.x2x3." + block + ".pdf"))
+    plt.close()
+
+    # proportion of regions
+    heatmap_df = pd.DataFrame(np.divide(overlap_matrix_x2_x3[block], total_blocks), index=trait_list, columns=trait_list)
+    fig, ax = plt.subplots()
+    sns.heatmap(heatmap_df, cmap=cmap, vmin=0, square=True, linewidths=.5, cbar_kws={"shrink": .5})
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+         rotation_mode="anchor")
+    fig.tight_layout()
+    plt.savefig(os.path.join(figdir, "heatmap_prop.x2x3." + block + ".pdf"))
+    plt.close()
+
+    # print out top 10 overlap for 3x
+    
+
+    # clustermap
+    """
+    sns.clustermap(overlap_matrix_x2_x3[block], center=0, cmap="Blues", linewidths=.75, figsize=(13, 13))
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+         rotation_mode="anchor")
+    fig.tight_layout()
+    plt.savefig(os.path.join(figdir, "clustermap.x2x3." + block + ".pdf"))
+    plt.close()
+    """
+
+    """
+    heatmap_df = pd.DataFrame(overlap_matrix_x3[block], index=trait_list, columns=trait_list)
+    mask = np.zeros_like(heatmap_df, dtype=np.bool)
+    mask[np.triu_indices_from(mask)] = True
+
+    sns.heatmap(heatmap_df, mask=mask, cmap=cmap, vmin=0, square=True, linewidths=.5, cbar_kws={"shrink": .5})
+
+    plt.savefig(os.path.join(figdir, "heatmap.x3." + block + ".pdf"))
+    plt.close()
+
+
+    heatmap_df = pd.DataFrame(overlap_matrix_x15[block], index=trait_list, columns=trait_list)
+    mask = np.zeros_like(heatmap_df, dtype=np.bool)
+    mask[np.triu_indices_from(mask)] = True
+    sns.heatmap(heatmap_df, mask=mask, cmap=cmap, vmin=0, square=True, linewidths=.5, cbar_kws={"shrink": .5})
+
+    plt.savefig(os.path.join(figdir, "heatmap.x1.5." + block + ".pdf"))
+    plt.close()
+    """
+
+# save overlap to text file 
+
+out_f.close()
+    

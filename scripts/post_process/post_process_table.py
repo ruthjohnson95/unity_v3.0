@@ -1,0 +1,47 @@
+import pandas as pd 
+import numpy as np 
+
+all_summary_file="/u/home/r/ruthjohn/ruthjohn/unity_v3.0/h2_poly/SUMMARY/ALL.summary.txt"
+outfile="/u/home/r/ruthjohn/ruthjohn/unity_v3.0/h2_poly/SUMMARY/ALL.summary.table.txt"
+
+out_f = open(outfile, 'w')
+out_f.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % ("TRAIT", "BLOCK","M", "H2", "H2-sd", "P", "P-sd" ,"M_c", "M_c-sd", "H2_Mc", "H2_Mc-sd"))
+df = pd.read_csv(all_summary_file, sep=' ')
+
+# loop through traits 
+trait_list=set(df['TRAIT'])
+trait_list = np.sort(list(trait_list)) 
+
+for trait in trait_list:
+    df_trait = df.loc[df['TRAIT'] == trait]
+
+    # per block
+    block_list = ['6mb', '12mb', '24mb', '48mb']
+    for block in block_list:
+        df_block = df_trait.loc[df['BLOCK'] == block]
+        M = df_block['M']
+        p = df_block['P_EST']
+        p = np.nan_to_num(p)
+        h2 = df_block['H2']
+        p_med = np.median(p)
+        p_var = np.sqrt(np.var(p))
+
+        h2_med = np.median(df_block['H2'])
+        h2_var = np.sqrt(np.var(h2))
+
+        M_med = np.median(M)
+        M_var = np.sqrt(np.var(h2))
+ 
+        Mc = np.multiply(M, p)
+        Mc_med = np.median(Mc)
+        Mc_var = np.sqrt(np.var(Mc))
+
+        h2_Mc = np.divide(h2, Mc)
+        h2_Mc = h2_Mc[~np.isinf(h2_Mc)]
+        h2_Mc_med = np.median(h2_Mc)
+        h2_Mc_var = np.sqrt(np.var(h2_Mc))
+
+        out_f.write("%s,%s,%2f,%2f,%.2g,,%2f,%.2g,%2f,%.2g,%2f,%.2g\n" % (trait, block, M_med, h2_med, h2_var, p_med, p_var, Mc_med, Mc_var, h2_Mc_med, h2_Mc_var))
+
+out_f.close()
+    

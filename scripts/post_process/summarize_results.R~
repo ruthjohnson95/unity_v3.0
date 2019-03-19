@@ -1,0 +1,13 @@
+#!/usr/bin/env Rscript
+
+
+results_dir<- "/u/flashscratch/r/ruthjohn/ukbb_bmi_exp/results_maf_0.05" 
+
+summary_file <- file.path(results_dir, "summary.txt")
+outfile <- file.path(results_dir, "summary.combo.txt")
+
+df<-read.table(summary_file, header=T)
+
+df$C <- df$M * df$p
+
+write.table(df, outfile, row.names=F, col.names=T, quote=F)
